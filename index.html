@@ -1,1 +1,71 @@
-<html>Hi there</html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111827" />
+  <title>Electricity & Solar — Mobile</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
+  <script src="https://accounts.google.com/gsi/client" async defer onload="window.__gisLoaded && window.__gisLoaded()"></script>
+  <style>
+    :root { --safe-bottom: env(safe-area-inset-bottom, 0px); }
+    .card{background:#fff;border-radius:1rem;box-shadow:0 8px 16px rgba(0,0,0,.06);padding:1rem}
+    .kpi{font-size:1.5rem;font-weight:700}
+    .kpi-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:#6b7280}
+    .input{border:1px solid #e5e7eb;border-radius:.75rem;padding:.6rem .85rem;width:100%}
+    .tab-active{color:#111827;font-weight:600}
+    .tab-icon{display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:.75rem;gap:2px}
+    .tab-icon svg{width:20px;height:20px;stroke-width:2}
+    .tab-fab{background:#10b981;color:#fff;border-radius:50%;width:56px;height:56px;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,0,0,.15);margin-top:-28px}
+    body{padding-bottom:calc(76px + var(--safe-bottom))}
+    .ok{color:#065f46}.bad{color:#991b1b}
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+  <header class="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
+    <div>
+      <h1 class="text-xl font-bold">Household Electricity & Solar</h1>
+      <p class="text-xs text-gray-600">Mobile PWA. Reads your Google Sheet.</p>
+    </div>
+    <div class="flex items-center gap-2">
+      <button id="signInBtn" type="button" class="px-3 py-2 rounded-xl bg-gray-900 text-white text-sm">Sign in</button>
+      <button id="signOutBtn" type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm hidden">Sign out</button>
+    </div>
+  </header>
+
+  <main id="view" class="px-4 pb-24 space-y-4">
+    <!-- Tab content will be mounted here -->
+  </main>
+
+  <nav class="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200" style="padding-bottom:var(--safe-bottom)">
+    <div class="grid grid-cols-5 items-center">
+      <button class="py-2 tab-icon tab-active" data-tab="kpi">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="20" x2="12" y2="10"/><line x1="18" y1="20" x2="18" y2="4"/><line x1="6" y1="20" x2="6" y2="16"/></svg>
+        KPIs
+      </button>
+      <button class="py-2 tab-icon" data-tab="charts">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 3v18h18"/><path d="M19 9l-5 5-4-4-3 3"/></svg>
+        Charts
+      </button>
+      <div class="flex justify-center">
+        <button class="tab-fab" data-tab="entry">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        </button>
+      </div>
+      <button class="py-2 tab-icon" data-tab="data">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>
+        Data
+      </button>
+      <button class="py-2 tab-icon" data-tab="settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c0 .69.28 1.35.76 1.82.48.47 1.13.76 1.82.76H21a2 2 0 0 1 0 4h-.09c-.69 0-1.35.28-1.82.76-.48.47-.76 1.13-.76 1.82z"/></svg>
+        Settings
+      </button>
+    </div>
+  </nav>
+
+  <script type="module" src="app.core.js"></script>
+</body>
+</html>
