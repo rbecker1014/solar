@@ -1,18 +1,35 @@
 <!doctype html>
 <html>
   <body>
-    <h3>Send solar production</h3>
+    <h3>Solar Production Entry :)</h3>
+    <p>Most recent date in table: <strong id="lastDate">Loading…</strong></p>
+
     <form id="f">
       <label>Date <input name="date" type="date" required></label>
       <label>ITD <input name="itd" type="number" step="any" required></label>
       <label>Prod <input name="prod" type="number" step="any" required></label>
       <button>Submit</button>
     </form>
-    <pre id="out"></pre>
-    <script>
-      const ENDPOINT = "https://script.google.com/macros/s/AKfycbzLJeoaJP345Yl23OrZ32u7spl3K0N2JN0XGWBV4YvlIjwD5el6RQuw64-GuoRuSoZQ/exec";
-      const TOKEN = "put-a-long-random-secret-here"; // must match SHARED_TOKEN
 
+    <pre id="out"></pre>
+
+    <script>
+      const ENDPOINT = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
+      const TOKEN = "put-a-long-random-secret-here"; // must match SHARED_TOKEN in Apps Script
+
+      // Load most recent date on page load
+      async function loadLast() {
+        try {
+          const res = await fetch(`${ENDPOINT}?token=${TOKEN}`);
+          const { ok, last, error } = await res.json();
+          if (!ok) throw new Error(error || 'Unknown error');
+          document.getElementById('lastDate').textContent = last?.date || 'none';
+        } catch (err) {
+          document.getElementById('lastDate').textContent = 'Error: ' + err.message;
+        }
+      }
+
+      // Submit handler
       document.getElementById('f').addEventListener('submit', async (e)=>{
         e.preventDefault();
         const data = Object.fromEntries(new FormData(e.target).entries());
@@ -25,9 +42,17 @@
           body: JSON.stringify(data)
         });
         const text = await res.text();
-        try { document.getElementById('out').textContent = JSON.stringify(JSON.parse(text), null, 2); }
-        catch { document.getElementById('out').textContent = text; }
+        try {
+          const json = JSON.parse(text);
+          document.getElementById('out').textContent = JSON.stringify(json, null, 2);
+          // Refresh last date after successful write
+          if (json.ok) loadLast();
+        } catch {
+          document.getElementById('out').textContent = text;
+        }
       });
+
+      loadLast();
     </script>
   </body>
 </html>
