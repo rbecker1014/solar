@@ -5,30 +5,68 @@
     <title>SDG&E Usage</title>
     <style>
       body { font-family: system-ui, Arial, sans-serif; padding: 16px; }
-      table { border-collapse: collapse; margin-top: 12px; }
-      th, td { border: 1px solid #ccc; padding: 6px 8px; }
+      table { border-collapse: collapse; margin-top: 16px; }
+      th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: center; }
       th { background: #f6f6f6; }
+      #chartContainer { width: 100%; max-width: 640px; margin-top: 24px; }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body>
     <h2>SDG&E Days Present per Month</h2>
     <div id="results"></div>
+    <div id="chartContainer">
+      <canvas id="usageChart"></canvas>
+    </div>
 
     <script>
       const ENDPOINT = "https://script.google.com/macros/s/AKfycbwMS3F3h57llbmz0SQ59OPk6E-xunGw8W3bZ6PTJkJj7dA1T28hBNE_vfqYrjls0pVz/exec";
 
-      function render(headers, rows) {
+      function renderTable(headers, rows) {
         const thead = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
         const tbody = rows.map(r => "<tr>" + r.map(v => `<td>${v}</td>`).join("") + "</tr>").join("");
         document.getElementById('results').innerHTML =
           `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
       }
 
+      function renderChart(labels, values) {
+        const ctx = document.getElementById('usageChart').getContext('2d');
+        new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Days Present',
+              data: values,
+              backgroundColor: 'rgba(54, 162, 235, 0.6)',
+              borderColor: 'rgba(54, 162, 235, 1)',
+              borderWidth: 1
+            }]
+          },
+          options: {
+            responsive: true,
+            scales: {
+              y: {
+                beginAtZero: true,
+                ticks: { stepSize: 5 }
+              }
+            }
+          }
+        });
+      }
+
       (async () => {
         try {
           const res = await fetch(ENDPOINT);
           const { headers, rows } = await res.json();
-          render(headers, rows);
+
+          // Render table
+          renderTable(headers, rows);
+
+          // Prepare chart data
+          const labels = rows.map(r => r[0]);  // year_month
+          const values = rows.map(r => parseInt(r[1], 10)); // days_present
+          renderChart(labels, values);
         } catch (err) {
           document.getElementById('results').textContent = "Error: " + err.message;
         }
