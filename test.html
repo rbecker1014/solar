@@ -13,46 +13,35 @@
 
     <pre id="out"></pre>
 
-    <script>
-      const ENDPOINT = "https://script.google.com/macros/s/AKfycbyzw9eTmDqo3K-OFGXqdvvoWam-sEoW5_hwxvUNYxDVYaoCr6xwJeW6uHiGNwWd0G9M/exec";
-      const TOKEN = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d"; // must match SHARED_TOKEN in Apps Script
+   <script>
+  const ENDPOINT = "https://script.google.com/macros/s/AKfycbx0pKnubeqxxJXvUbmd9vvfxdHCZqleMppnZEajNSCyr5SAqEpP4Id249iA2OBFDpZc/exec";
+  const TOKEN = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
-      // Load most recent date on page load
-      async function loadLast() {
-        try {
-          const res = await fetch(`${ENDPOINT}?token=${TOKEN}`);
-          const { ok, last, error } = await res.json();
-          if (!ok) throw new Error(error || 'Unknown error');
-          document.getElementById('lastDate').textContent = last?.date || 'none';
-        } catch (err) {
-          document.getElementById('lastDate').textContent = 'Error: ' + err.message;
-        }
-      }
+  document.getElementById('f').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const data = new URLSearchParams();
+    data.set('token', TOKEN);
+    data.set('date', fd.get('date'));
+    data.set('itd',  fd.get('itd'));
+    data.set('prod', fd.get('prod'));
 
-      // Submit handler
-      document.getElementById('f').addEventListener('submit', async (e)=>{
-        e.preventDefault();
-        const data = Object.fromEntries(new FormData(e.target).entries());
-        data.itd = Number(data.itd);
-        data.prod = Number(data.prod);
-        data.token = TOKEN;
-        const res = await fetch(ENDPOINT, {
-          method: 'POST',
-          headers: { 'Content-Type':'application/json' },
-          body: JSON.stringify(data)
-        });
-        const text = await res.text();
-        try {
-          const json = JSON.parse(text);
-          document.getElementById('out').textContent = JSON.stringify(json, null, 2);
-          // Refresh last date after successful write
-          if (json.ok) loadLast();
-        } catch {
-          document.getElementById('out').textContent = text;
-        }
-      });
+    // application/x-www-form-urlencoded → no CORS preflight
+    const res = await fetch(ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: data.toString()
+    });
 
-      loadLast();
-    </script>
+    const text = await res.text(); // for troubleshooting
+    try {
+      const json = JSON.parse(text);
+      document.getElementById('out').textContent = JSON.stringify(json, null, 2);
+    } catch {
+      document.getElementById('out').textContent = text;
+    }
+  });
+</script>
+
   </body>
 </html>
