@@ -2,53 +2,35 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>TEST</title>
+    <title>SDG&E Usage</title>
     <style>
       body { font-family: system-ui, Arial, sans-serif; padding: 16px; }
       table { border-collapse: collapse; margin-top: 12px; }
       th, td { border: 1px solid #ccc; padding: 6px 8px; }
       th { background: #f6f6f6; }
-      #status { margin-top: 12px; white-space: pre-wrap; }
     </style>
   </head>
   <body>
-    <h3>TEST2</h3>
-    <div id="status">Loading…</div>
+    <h2>SDG&E Days Present per Month</h2>
     <div id="results"></div>
 
     <script>
       const ENDPOINT = "https://script.google.com/macros/s/AKfycbwMS3F3h57llbmz0SQ59OPk6E-xunGw8W3bZ6PTJkJj7dA1T28hBNE_vfqYrjls0pVz/exec";
-      const statusEl = document.getElementById('status');
-      const resultsEl = document.getElementById('results');
 
       function render(headers, rows) {
         const thead = "<tr>" + headers.map(h => `<th>${h}</th>`).join("") + "</tr>";
         const tbody = rows.map(r => "<tr>" + r.map(v => `<td>${v}</td>`).join("") + "</tr>").join("");
-        resultsEl.innerHTML = `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
+        document.getElementById('results').innerHTML =
+          `<table><thead>${thead}</thead><tbody>${tbody}</tbody></table>`;
       }
 
       (async () => {
         try {
-          const res = await fetch(ENDPOINT, { method: "GET" });
-          statusEl.textContent = `HTTP ${res.status} ${res.statusText}`;
-          const text = await res.text();
-          // Show raw body so we can see errors or HTML if any
-          if (!text) {
-            statusEl.textContent += "\nEmpty body.";
-            return;
-          }
-          try {
-            const data = JSON.parse(text);
-            statusEl.textContent += "\nParsed JSON OK.";
-            render(data.headers || [], data.rows || []);
-          } catch (e) {
-            statusEl.textContent += "\nNon-JSON body below:";
-            resultsEl.textContent = text;
-          }
+          const res = await fetch(ENDPOINT);
+          const { headers, rows } = await res.json();
+          render(headers, rows);
         } catch (err) {
-          statusEl.textContent = `Fetch error: ${err.message}\n` +
-            `If you opened this file with file://, serve it over http(s) instead.`;
-          console.error(err);
+          document.getElementById('results').textContent = "Error: " + err.message;
         }
       })();
     </script>
