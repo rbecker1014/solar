@@ -1,0 +1,33 @@
+<!doctype html>
+<html>
+  <body>
+    <h3>Send solar production</h3>
+    <form id="f">
+      <label>Date <input name="date" type="date" required></label>
+      <label>ITD <input name="itd" type="number" step="any" required></label>
+      <label>Prod <input name="prod" type="number" step="any" required></label>
+      <button>Submit</button>
+    </form>
+    <pre id="out"></pre>
+    <script>
+      const ENDPOINT = "https://script.google.com/macros/s/AKfycbzLJeoaJP345Yl23OrZ32u7spl3K0N2JN0XGWBV4YvlIjwD5el6RQuw64-GuoRuSoZQ/exec";
+      const TOKEN = "put-a-long-random-secret-here"; // must match SHARED_TOKEN
+
+      document.getElementById('f').addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const data = Object.fromEntries(new FormData(e.target).entries());
+        data.itd = Number(data.itd);
+        data.prod = Number(data.prod);
+        data.token = TOKEN;
+        const res = await fetch(ENDPOINT, {
+          method: 'POST',
+          headers: { 'Content-Type':'application/json' },
+          body: JSON.stringify(data)
+        });
+        const text = await res.text();
+        try { document.getElementById('out').textContent = JSON.stringify(JSON.parse(text), null, 2); }
+        catch { document.getElementById('out').textContent = text; }
+      });
+    </script>
+  </body>
+</html>
