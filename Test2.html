@@ -1,0 +1,10 @@
+<html>
+TEST
+
+<script>
+const ENDPOINT = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
+fetch(ENDPOINT).then(r=>r.json()).then(({headers,rows})=>{
+  console.log(headers, rows);
+});
+</script>
+</html>
