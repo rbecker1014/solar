@@ -1,47 +1,73 @@
 <!doctype html>
 <html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Submit Debug</title>
+    <style>
+      body { font-family: system-ui, Arial; padding:16px }
+      label { display:block; margin:8px 0 }
+      input { padding:6px 8px }
+      button { padding:8px 12px }
+      pre { background:#f6f6f6; border:1px solid #ddd; padding:10px; white-space:pre-wrap }
+    </style>
+  </head>
   <body>
-    <h3>Solar Production Entry </h3>
-    <p>Most recent date in table: <strong id="lastDate">Loading…</strong></p>
+    <h2>Debug Submit to Apps Script</h2>
 
-    <form id="f">
-      <label>Date <input name="date" type="date" required></label>
-      <label>ITD <input name="itd" type="number" step="any" required></label>
-      <label>Prod <input name="prod" type="number" step="any" required></label>
-      <button>Submit</button>
-    </form>
+    <label>Date <input id="date" type="date"></label>
+    <label>ITD <input id="itd" type="number" step="any" placeholder="12345"></label>
+    <label>Prod <input id="prod" type="number" step="any" placeholder="50"></label>
+    <button id="btn" type="button">Submit</button>
 
-    <pre id="out"></pre>
+    <h3>Log</h3>
+    <pre id="log"></pre>
 
-   <script>
-  const ENDPOINT = "https://script.google.com/macros/s/AKfycbx0pKnubeqxxJXvUbmd9vvfxdHCZqleMppnZEajNSCyr5SAqEpP4Id249iA2OBFDpZc/exec";
-  const TOKEN = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
+    <script>
+      const ENDPOINT = "https://script.google.com/macros/s/AKfycbx0pKnubeqxxJXvUbmd9vvfxdHCZqleMppnZEajNSCyr5SAqEpP4Id249iA2OBFDpZc/exec";
+      const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
-  document.getElementById('f').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const fd = new FormData(e.target);
-    const data = new URLSearchParams();
-    data.set('token', TOKEN);
-    data.set('date', fd.get('date'));
-    data.set('itd',  fd.get('itd'));
-    data.set('prod', fd.get('prod'));
+      const log = m => { const el=document.getElementById('log'); el.textContent += (typeof m==='string'?m:JSON.stringify(m))+"\n"; };
 
-    // application/x-www-form-urlencoded → no CORS preflight
-    const res = await fetch(ENDPOINT, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body: data.toString()
-    });
+      window.addEventListener('error', e => log("JS error: " + e.message));
 
-    const text = await res.text(); // for troubleshooting
-    try {
-      const json = JSON.parse(text);
-      document.getElementById('out').textContent = JSON.stringify(json, null, 2);
-    } catch {
-      document.getElementById('out').textContent = text;
-    }
-  });
-</script>
+      document.addEventListener('DOMContentLoaded', () => {
+        const btn = document.getElementById('btn');
+        btn.addEventListener('click', async () => {
+          alert('handler bound. starting submit'); // proves click handler is wired
+          log('Click handler started');
 
+          const date = document.getElementById('date').value;
+          const itd  = document.getElementById('itd').value;
+          const prod = document.getElementById('prod').value;
+          log({ date, itd, prod });
+
+          const qs = new URLSearchParams();
+          qs.set('token', TOKEN);
+          qs.set('date', date);
+          qs.set('itd',  itd);
+          qs.set('prod', prod);
+
+          try {
+            log('Posting...');
+            const res = await fetch(ENDPOINT, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+              body: qs.toString()
+            });
+            const text = await res.text();
+            log('HTTP ' + res.status);
+            log('Raw body: ' + text);
+            try {
+              const j = JSON.parse(text);
+              if (j.ok) log('OK inserted ' + (j.inserted ?? '?') + ' row(s)');
+              else log('Server error: ' + (j.error || 'unknown'));
+            } catch {}
+          } catch (err) {
+            log('Fetch failed: ' + err.message);
+          }
+        });
+        log('Handler bound to #btn');
+      });
+    </script>
   </body>
 </html>
