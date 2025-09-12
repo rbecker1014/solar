@@ -95,6 +95,86 @@ It replaces the old Excel-based workflow with a simple, token-protected HTTP API
 
 ---
 
+## Apps Script Server Code
+
+Make sure **BigQuery Advanced Service** is enabled in Apps Script (Services → Add Service → BigQuery).
+
+```javascript
+// === CONFIG ===
+const PROJECT_ID   = 'solar-data-api';
+const DATASET_ID   = 'energy';
+const TABLE_ID     = 'solar_production';
+const LOCATION     = 'US';
+const SHARED_TOKEN = 'Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d';
+
+// GET latest row
+function doGet(e) {
+  try {
+    if (e.parameter.token !== SHARED_TOKEN) return bad_('forbidden');
+
+    const sql = `
+      SELECT date, ITD_Production, Production
+      FROM \`${PROJECT_ID}.${DATASET_ID}.${TABLE_ID}\`
+      WHERE date IS NOT NULL
+      ORDER BY date DESC
+      LIMIT 1`;
+
+    const job = BigQuery.Jobs.query({ query: sql, useLegacySql: false, location: LOCATION }, PROJECT_ID);
+    const rows = job.rows || [];
+    if (!rows.length) return jsonOutput({ ok: true, last: null });
+
+    const f = rows[0].f;
+    return jsonOutput({ ok: true, version: 'v3.0', last: {
+      date: String(f[0].v),
+      itd: Number(f[1].v),
+      prod: Number(f[2].v)
+    }});
+  } catch (err) {
+    return bad_(String(err && err.message || err));
+  }
+}
+
+// POST new data
+function doPost(e) {
+  try {
+    let body = {};
+    if (e.postData && e.postData.type &&
+        String(e.postData.type).toLowerCase().indexOf('json') !== -1) {
+      try { body = JSON.parse(e.postData.contents || '{}'); } catch (_) { body = {}; }
+    }
+    const p = e && e.parameter ? e.parameter : {};
+
+    const token = (body.token ?? p.token ?? '').toString();
+    if (token !== SHARED_TOKEN) return bad_('forbidden');
+
+    const inputDate = (body.date ?? p.date ?? '').toString().trim();
+    const inputITD  = Number(body.itd  ?? p.itd);
+    const inputProd = Number(body.prod ?? p.prod);
+
+    if (!inputDate || !Number.isFinite(inputITD) || !Number.isFinite(inputProd)) {
+      return bad_('date (YYYY-MM-DD), itd (number), prod (number) required');
+    }
+
+    // Fetch last row
+    const last = getLastRow_();
+
+    // Fill missing rows if needed
+    const rows = buildExtrapolatedRows_(last, inputDate, inputITD, inputProd);
+
+    // Insert into BigQuery
+    bqInsertAll_(rows);
+
+    return jsonOutput({ ok: true, inserted: rows.length, last, rows });
+  } catch (err) {
+    return bad_(String(err && err.message || err));
+  }
+}
+```
+
+Helper functions like `getLastRow_`, `buildExtrapolatedRows_`, `bqInsertAll_`, `jsonOutput`, and `bad_` are defined in the full script (see repo).
+
+---
+
 ## Client Web Page
 
 A simple HTML page is included to:
