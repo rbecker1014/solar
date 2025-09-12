@@ -31,32 +31,31 @@ export async function mount(root){
   };
 
   function draw(){
-    const ctxMonthly = document.getElementById('chartMonthly');
-    if (ctxMonthly){
-      const labels = data.monthly.map(r => r.month);
-      const use = data.monthly.map(r => r.usage || 0);
-      const solar = data.monthly.map(r => r.prod || 0);
-      if (window.__monthlyChart) window.__monthlyChart.destroy();
-      window.__monthlyChart = new Chart(ctxMonthly, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'Usage kWh', data: use }, { label: 'Solar kWh', data: solar }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
-      });
-    }
-
-const ctxDaily = document.getElementById('chart7d');
-    if (ctxDaily){
-      const labels = data.recent.map(r => r.date);
-      const use = data.recent.map(r => r.usage || 0);
-      const solar = data.recent.map(r => r.prod || 0);
-      if (window.__dailyChart) window.__dailyChart.destroy();
-      window.__dailyChart = new Chart(ctxDaily, {
-        type: 'bar',
-        data: { labels, datasets: [{ label: 'Usage kWh', data: use }, { label: 'Solar kWh', data: solar }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
-      });
-    }
-  }
+34:   const ctxMonthly = document.getElementById('chartMonthly');
+35:   if (ctxMonthly){
+36:     const labels = data.monthly.map(r => r.month);
+37:     const use = data.monthly.map(r => r.usage || 0);
+38:     const solar = data.monthly.map(r => r.prod || 0);
+39:     if (window.__monthlyChart) window.__monthlyChart.destroy();
+40:     window.__monthlyChart = new Chart(ctxMonthly, {
+41:       type: 'bar',
+42:       data: { labels, datasets: [{ label: 'Usage kWh', data: use }, { label: 'Solar kWh', data: solar }] },
+43:       options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+44:     });
+45:   }
+47:   const ctxDaily = document.getElementById('chart7d');
+48:   if (ctxDaily){
+49:     const labels = data.recent.map(r => r.date);
+50:     const use = data.recent.map(r => r.usage || 0);
+51:     const solar = data.recent.map(r => r.prod || 0);
+52:     if (window.__dailyChart) window.__dailyChart.destroy();
+53:     window.__dailyChart = new Chart(ctxDaily, {
+54:       type: 'bar',
+55:       data: { labels, datasets: [{ label: 'Usage kWh', data: use }, { label: 'Solar kWh', data: solar }] },
+56:       options: { responsive: true, plugins: { legend: { position: 'bottom' } }, scales: { y: { beginAtZero: true } } }
+57:     });
+58:   }
+59: }
   
     async function load(){
     try{
