@@ -1,20 +1,56 @@
 // tabs/data.js
 
-  const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
-  const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
+const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
+const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
-async function load(){
-  const tbody = root.querySelector('#dataTable tbody');
+let $root = null;
+
+export async function mount(root) {
+  $root = root;
+
+  // Render template first so tbody exists before load()
+  $root.innerHTML = `
+    <section class="space-y-3">
+      <div class="card">
+        <h2 class="font-semibold">Data</h2>
+        <div class="overflow-x-auto mt-2">
+          <table class="min-w-full text-sm" id="dataTable">
+            <thead class="bg-gray-100 text-gray-700">
+              <tr>
+                <th class="text-left p-2">Date</th>
+                <th class="text-right p-2">Solar kWh</th>
+                <th class="text-right p-2">Home kWh</th>
+                <th class="text-right p-2">Net kWh</th>
+                <th class="text-right p-2">Grid Import</th>
+                <th class="text-right p-2">Grid Export</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  `;
+
+  await load();
+}
+
+async function load() {
+  const tbody = $root && $root.querySelector('#dataTable tbody');
+  if (!tbody) {
+    console.error('tbody not found. Check that mount(root) ran and rendered the table.');
+    return;
+  }
   tbody.innerHTML = '';
 
   const sql = `
     SELECT
       x.date AS Date,
-      SUM(x.Production)          AS SolarkWh,
+      SUM(x.Production)              AS SolarkWh,
       SUM(x.Production) + SUM(x.Net) AS HomekWh,
-      SUM(x.Net)                 AS NetkWh,
-      SUM(x.GridImport)          AS GridImport,
-      SUM(x.GridExport)          AS GridExport
+      SUM(x.Net)                     AS NetkWh,
+      SUM(x.GridImport)              AS GridImport,
+      SUM(x.GridExport)              AS GridExport
     FROM (
       SELECT
         SP.date,
@@ -29,7 +65,7 @@ async function load(){
       SELECT
         SDGE.date,
         NULL AS Production,
-        SUM(net_kwh)        AS Net,
+        SUM(net_kwh)         AS Net,
         SUM(consumption_kwh) AS GridImport,
         SUM(generation_kwh)  AS GridExport
       FROM \`energy.sdge_usage\` SDGE
@@ -39,28 +75,28 @@ async function load(){
     ORDER BY x.date DESC
   `;
 
-  try{
+  try {
     const url = `${ENDPOINT}?token=${encodeURIComponent(TOKEN)}&query=${encodeURIComponent(sql)}`;
     const res = await fetch(url);
     const j = await res.json();
 
-    if (!j.ok) {
+    if (!j || j.ok !== true) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="6" class="p-2 text-red-600">${j.error || 'Unknown error'}</td>`;
+      tr.innerHTML = `<td colspan="6" class="p-2 text-red-600">${(j && j.error) || 'Unknown error'}</td>`;
       tbody.appendChild(tr);
-      log('GET data error: ' + JSON.stringify(j));
+      console.error('GET data error:', j);
       return;
     }
 
-    const rows = j.rows || [];
+    const rows = Array.isArray(j.rows) ? j.rows : [];
     const frag = document.createDocumentFragment();
 
-    if (rows.length === 0){
+    if (rows.length === 0) {
       const tr = document.createElement('tr');
       tr.innerHTML = '<td colspan="6" class="p-2 text-center text-gray-500">No data</td>';
       frag.appendChild(tr);
     } else {
-      for (const r of rows){
+      for (const r of rows) {
         const tr = document.createElement('tr');
         tr.innerHTML = `
           <td class="p-2 whitespace-nowrap">${r.Date}</td>
@@ -75,13 +111,11 @@ async function load(){
     }
 
     tbody.appendChild(frag);
-    log('GET data: ' + JSON.stringify({ ok: j.ok, count: rows.length }));
-  }catch(e){
+    console.log('GET data:', { ok: j.ok, count: rows.length });
+  } catch (e) {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td colspan="6" class="p-2 text-red-600">Fetch error: ${e.message}</td>`;
     tbody.appendChild(tr);
-    log('load error: ' + e.message);
+    console.error('load error:', e);
   }
 }
-
-  
