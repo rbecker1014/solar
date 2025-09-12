@@ -4,7 +4,7 @@
   const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
 async function load(){
-  const tbody = root.querySelector('#tableBody');
+  const tbody = root.querySelector('#dataTable tbody');
   tbody.innerHTML = '';
 
   const sql = `
