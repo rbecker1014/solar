@@ -21,7 +21,7 @@ export async function mount(root){
     </section>
   `;
 
-  const ENDPOINT = "https://script.google.com/macros/s/AKfycby3z6qAj0H8D5Lpu9kC6TgJyneSpArmxzbWiKUYCMI-tNwQarcotZFz1QmFJjAcxRzO/exec";
+  const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
   const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
   const log = m => {
