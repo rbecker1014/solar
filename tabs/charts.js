@@ -9,9 +9,13 @@ export async function mount(root){
         </div>
         <canvas id="chartMonthly" class="mt-3"></canvas>
       </div>
-    <div class="card">
+      <div class="card">
         <h2 class="font-semibold">Last 7 Days Usage and Solar</h2>
         <canvas id="chart7d" class="mt-3"></canvas>
+      </div>
+      <div class="card">
+        <h3 class="text-lg font-semibold mb-2">Log</h3>
+        <pre id="log" class="mono text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded border border-gray-200"></pre>
       </div>
     </section>
   `;
@@ -56,11 +60,16 @@ const ctxDaily = document.getElementById('chart7d');
       data.recent = j.recent || [];
       data.monthly = j.monthly || [];
       draw();
+      log('GET charts: ' + JSON.stringify(j));
     }catch(err){
       console.error('load error', err);
+      log('load error: ' + err.message);
     }
   }
 
-  document.getElementById('refreshBtn').addEventListener('click', load);
+document.getElementById('refreshBtn').addEventListener('click', async () => {
+    log('manual refresh');
+    await load();
+  });
   await load();
 }
