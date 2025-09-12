@@ -300,34 +300,6 @@ async function showTab(key){
 }
 window.__showTab = showTab;
 
-// Auth UI and wiring
-function initGsi(){
-  if (!(window.google && google.accounts && google.accounts.oauth2)) return false;
-  tokenClient = google.accounts.oauth2.initTokenClient({
-    client_id: GOOGLE_CLIENT_ID,
-    scope: SHEETS_SCOPE,
-    callback: async (resp)=>{
-      if (resp && resp.access_token){
-        accessToken = resp.access_token;
-        tokenExpiresAt = Date.now() + 55*60*1000;
-        setAuthUI(true);
-        await loadDataPrivate();
-        const active = document.querySelector('nav .tab-active')?.dataset.tab || 'kpi';
-        showTab(active);
-        const btn = document.getElementById('appendBtn');
-        if (btn) btn.disabled = false;
-      }
-    }
-  });
-  return true;
-}
-function setAuthUI(signedIn){
-  const inBtn = document.getElementById('signInBtn');
-  const outBtn = document.getElementById('signOutBtn');
-  if (signedIn){ outBtn.classList.remove('hidden'); inBtn.classList.add('hidden'); }
-  else { outBtn.classList.add('hidden'); inBtn.classList.remove('hidden'); }
-}
-
 // Wire navigation
 document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('nav [data-tab]').forEach(b => {
@@ -335,24 +307,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   document.querySelector('.tab-fab')?.addEventListener('click', ()=> showTab('entry'));
 
-  document.getElementById('signInBtn').addEventListener('click', ()=>{
-    if (!tokenClient){
-      if (!initGsi()){ alert('Google Identity not ready. Try again in a moment.'); return; }
-    }
-    tokenClient.requestAccessToken({ prompt: 'consent' });
-  });
-  document.getElementById('signOutBtn').addEventListener('click', ()=>{
-    accessToken = null; tokenExpiresAt = 0; setAuthUI(false);
-  });
-
   try{ await loadData(); } catch(e){ console.error(e); }
   showTab('kpi');
-
-  window.__gisLoaded = function(){ try{ initGsi(); } catch(e){ console.error('GIS init error', e);} };
-  const t = setInterval(()=>{
-    if (window.google && google.accounts && google.accounts.oauth2){
-      clearInterval(t);
-      if (!tokenClient) initGsi();
-    }
-  }, 300);
 });
