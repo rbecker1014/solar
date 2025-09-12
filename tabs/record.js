@@ -3,7 +3,9 @@ export async function mount(root){
     <section class="space-y-3">
       <div class="card">
         <h2 class="text-lg font-semibold mb-3">Solar Production Entry</h2>
-        <div id="latest" class="text-sm font-medium mb-2">Most recent date: loading…</div>
+        <div id="latest-date" class="text-sm font-medium">Most recent date: loading…</div>
+        <div id="latest-itd" class="text-sm font-medium">ITD Production: loading…</div>
+        <div id="latest-prod" class="text-sm font-medium mb-2">Production: loading…</div>
         <div id="status" class="text-sm text-emerald-700 mb-4">Status: idle</div>
         <div class="grid sm:grid-cols-3 gap-4">
           <label class="block"><span class="text-sm text-gray-700">Date</span><input id="date" type="date" class="input" required></label>
@@ -31,15 +33,23 @@ export async function mount(root){
     try {
       const res = await fetch(`${ENDPOINT}?token=${encodeURIComponent(TOKEN)}`);
       const j = await res.json();
-      const latestEl = root.querySelector('#latest');
-      if (j?.ok && j?.last?.date) {
-        latestEl.textContent = `Most recent date: ${j.last.date}`;
+      const latestDateEl = root.querySelector('#latest-date');
+      const latestItdEl  = root.querySelector('#latest-itd');
+      const latestProdEl = root.querySelector('#latest-prod');
+      if (j?.ok && j?.last) {
+        latestDateEl.textContent = `Most recent date: ${j.last.date ?? 'none'}`;
+        latestItdEl.textContent  = `ITD Production: ${j.last.itd ?? 'none'}`;
+        latestProdEl.textContent = `Production: ${j.last.prod ?? 'none'}`;
       } else {
-        latestEl.textContent = "Most recent date: none";
+        latestDateEl.textContent = 'Most recent date: none';
+        latestItdEl.textContent  = 'ITD Production: none';
+        latestProdEl.textContent = 'Production: none';
       }
       log('GET latest: ' + JSON.stringify(j));
     } catch (e) {
-      root.querySelector('#latest').textContent = "Error fetching latest";
+      root.querySelector('#latest-date').textContent = 'Error fetching latest';
+      root.querySelector('#latest-itd').textContent  = '';
+      root.querySelector('#latest-prod').textContent = '';
       log('GET error: ' + e.message);
     }
   }
