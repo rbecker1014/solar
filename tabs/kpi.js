@@ -6,10 +6,10 @@ const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
 let $root = null;
 
-export async function mount(root, ctx){
+export async function mount(root){
   $root = root;
 
-  // Layout: removed "Self Consumption", added "Avg Daily Production"
+  // Layout: removed Self Consumption, added Avg Daily Production
   $root.innerHTML = `
     <section class="space-y-3">
       <div class="grid grid-cols-2 gap-3">
@@ -28,32 +28,16 @@ export async function mount(root, ctx){
     </section>
   `;
 
-  await loadKPIs(ctx);
+  await loadKPIs();
 }
 
-// Helpers
-function log(msg){
+function log(m){
   const el = $root.querySelector('#kpiLog');
-  if (el) el.textContent += (typeof msg === 'string' ? msg : JSON.stringify(msg)) + "\n";
+  if (el) el.textContent += (typeof m === 'string' ? m : JSON.stringify(m)) + "\n";
 }
 function fmtKWh(v){ return `${Number(v || 0).toFixed(0)} kWh`; }
 function fmtPct(v){ return `${(Number(v || 0) * 100).toFixed(0)}%`; }
 function fmtUSD(v){ return `$${Number(v || 0).toFixed(0)}`; }
-
-// Try to honor app date filters if available; otherwise use last 30 days
-function getDateRange(ctx){
-  try{
-    if (ctx && ctx.state && typeof ctx.state.getDateRange === 'function'){
-      const r = ctx.state.getDateRange(); // expect { from: 'YYYY-MM-DD', to: 'YYYY-MM-DD' }
-      if (r && r.from && r.to) return r;
-    }
-  }catch(_){}
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(to.getDate() - 30);
-  const iso = d => d.toISOString().slice(0,10);
-  return { from: iso(from), to: iso(to) };
-}
 
 async function fetchQuery(sql){
   const url = `${ENDPOINT}?token=${encodeURIComponent(TOKEN)}&query=${encodeURIComponent(sql)}`;
@@ -63,11 +47,19 @@ async function fetchQuery(sql){
   return Array.isArray(j.rows) ? j.rows : [];
 }
 
-async function loadKPIs(ctx){
-  try{
-    const { from, to } = getDateRange(ctx);
+function lastNDatesRange(n){
+  const to = new Date();
+  const from = new Date(to);
+  from.setDate(to.getDate() - n);
+  const iso = d => d.toISOString().slice(0,10);
+  return { from: iso(from), to: iso(to) };
+}
 
-    // Daily rollup across both sources, then aggregate once
+async function loadKPIs(){
+  try{
+    // Window: last 30 days. Change n if you want.
+    const { from, to } = lastNDatesRange(30);
+
     const sql = `
       WITH combined AS (
         SELECT
@@ -84,7 +76,7 @@ async function loadKPIs(ctx){
         SELECT
           date,
           NULL AS Production,
-          SUM(net_kwh)        AS Net,
+          SUM(net_kwh)         AS Net,
           SUM(consumption_kwh) AS GridImport,
           SUM(generation_kwh)  AS GridExport
         FROM \`energy.sdge_usage\`
@@ -98,3 +90,44 @@ async function loadKPIs(ctx){
           SUM(Net)                     AS Net,
           SUM(GridImport)              AS GridImport,
           SUM(GridExport)              AS GridExport,
+          SUM(Production) + SUM(Net)   AS HomeKWh
+        FROM combined
+        GROUP BY date
+      )
+      SELECT
+        SUM(Production)                         AS totalSolar,
+        SUM(HomeKWh)                            AS totalUse,
+        SUM(GridImport)                         AS totalImp,
+        SUM(GridExport)                         AS totalExp,
+        AVG(HomeKWh)                            AS avgDailyUse,
+        AVG(Production)                         AS avgDailyProd,
+        SAFE_DIVIDE(SUM(Production) - SUM(GridExport), NULLIF(SUM(HomeKWh), 0)) AS selfSufficiency
+      FROM daily
+    `;
+
+    // Inline the dates
+    const sqlWithParams = sql
+      .replace('@from', `DATE '${from}'`)
+      .replace('@to',   `DATE '${to}'`);
+
+    const rows = await fetchQuery(sqlWithParams);
+    const r = rows[0] || {};
+
+    // Paint
+    $root.querySelector('#kpiUsage').textContent           = fmtKWh(r.totalUse);
+    $root.querySelector('#kpiSolar').textContent           = fmtKWh(r.totalSolar);
+    $root.querySelector('#kpiImport').textContent          = fmtKWh(r.totalImp);
+    $root.querySelector('#kpiExport').textContent          = fmtKWh(r.totalExp);
+    $root.querySelector('#kpiSelfSufficiency').textContent = fmtPct(r.selfSufficiency);
+    $root.querySelector('#kpiAvgDailyUse').textContent     = fmtKWh(r.avgDailyUse);
+    $root.querySelector('#kpiAvgDailyProd').textContent    = fmtKWh(r.avgDailyProd);
+
+    // Savings left as 0 until you provide rates to compute it
+    $root.querySelector('#kpiSavings').textContent         = fmtUSD(0);
+
+    log(`KPIs window: ${from} to ${to}`);
+  }catch(err){
+    log('kpi error: ' + err.message);
+    console.error(err);
+  }
+}
