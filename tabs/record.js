@@ -1,26 +1,22 @@
 export async function mount(root){
   root.innerHTML = `
-    <style>
-      body { font-family: system-ui, Arial; padding:16px; }
-      label { display:block; margin:8px 0; }
-      input { padding:6px 8px; }
-      button { padding:8px 12px; }
-      #latest { font-weight:bold; margin:12px 0; }
-      #status { margin:12px 0; color: #064; font-weight: 500; }
-      pre { background:#f6f6f6; border:1px solid #ddd; padding:10px; white-space:pre-wrap; }
-    </style>
-    <h2>Solar Production Entry</h2>
-
-    <div id="latest">Most recent date: loading…</div>
-    <div id="status">Status: idle</div>
-
-    <label>Date <input id="date" type="date" required></label>
-    <label>ITD <input id="itd" type="number" step="any" required placeholder="12345"></label>
-    <label>Prod <input id="prod" type="number" step="any" required placeholder="50"></label>
-    <button id="btn" type="button">Submit</button>
-
-    <h3>Log</h3>
-    <pre id="log"></pre>
+    <section class="space-y-3">
+      <div class="card">
+        <h2 class="text-lg font-semibold mb-3">Solar Production Entry</h2>
+        <div id="latest" class="text-sm font-medium mb-2">Most recent date: loading…</div>
+        <div id="status" class="text-sm text-emerald-700 mb-4">Status: idle</div>
+        <div class="grid sm:grid-cols-3 gap-4">
+          <label class="block"><span class="text-sm text-gray-700">Date</span><input id="date" type="date" class="input" required></label>
+          <label class="block"><span class="text-sm text-gray-700">ITD</span><input id="itd" type="number" step="any" class="input" required placeholder="12345"></label>
+          <label class="block"><span class="text-sm text-gray-700">Prod</span><input id="prod" type="number" step="any" class="input" required placeholder="50"></label>
+        </div>
+        <button id="btn" type="button" class="mt-4 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Submit</button>
+      </div>
+      <div class="card">
+        <h3 class="text-lg font-semibold mb-2">Log</h3>
+        <pre id="log" class="mono text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded border border-gray-200"></pre>
+      </div>
+    </section>
   `;
 
   const ENDPOINT = "https://script.google.com/macros/s/AKfycbz8cwcHG57A8n9XTTvwvt5pTyejqptINCjTl5BUrkUeZ9VIGIgOCYFHxJsria8xcTXj/exec";
