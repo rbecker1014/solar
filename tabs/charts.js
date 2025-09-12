@@ -20,7 +20,7 @@ export async function mount(root){
     </section>
   `;
   
-  const ENDPOINT = "https://script.google.com/macros/s/AKfycbz8cwcHG57A8n9XTTvwvt5pTyejqptINCjTl5BUrkUeZ9VIGIgOCYFHxJsria8xcTXj/exec";
+  const ENDPOINT = "https://script.google.com/macros/s/AKfycbzRIDXK4RAS5oW7o27-mFftZONqbgKdPJd29HDEoz3RYKAndnGJ0ua2YWp7BUHCNju-/exec";
   const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
   const data = { recent: [], monthly: [] };
