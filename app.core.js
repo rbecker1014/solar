@@ -283,6 +283,7 @@ const registry = {
   charts: () => import('./tabs/charts.js'),
   data: () => import('./tabs/data.js'),
   entry: () => import('./tabs/entry.js'),
+  record: () => import('./tabs/record.js'),
   settings: () => import('./tabs/settings.js'),
 };
 const cache = new Map();
