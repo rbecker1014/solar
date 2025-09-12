@@ -24,6 +24,11 @@ export async function mount(root){
   const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
   const data = { recent: [], monthly: [] };
+  
+  const log = m => {
+    const el = root.querySelector('#log');
+    el.textContent += (typeof m === 'string' ? m : JSON.stringify(m)) + "\n";
+  };
 
   function draw(){
     const ctxMonthly = document.getElementById('chartMonthly');
