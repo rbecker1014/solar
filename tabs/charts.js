@@ -18,7 +18,7 @@ export async function mount(root){
       <div class="card">
         <div class="flex items-center justify-between">
           <h2 class="font-semibold">Monthly Usage and Solar</h2>
-          <button id="refreshBtn" type="button" class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm">Refresh</button>
+        
         </div>
         <canvas id="chartMonthly" class="mt-3"></canvas>
       </div>
