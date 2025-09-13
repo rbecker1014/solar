@@ -56,6 +56,7 @@ async function loadKPIs(ctx){
   try{
     const { from, to } = getDateRangeFromState(ctx);
 
+    // Embed dates directly to avoid leftover @from/@to placeholders
     const sql = `
       WITH combined AS (
         SELECT
@@ -65,7 +66,7 @@ async function loadKPIs(ctx){
           NULL AS GridImport,
           NULL AS GridExport
         FROM \`energy.solar_production\`
-        WHERE date BETWEEN @from AND @to
+        WHERE date BETWEEN DATE '${from}' AND DATE '${to}'
 
         UNION ALL
 
@@ -76,7 +77,7 @@ async function loadKPIs(ctx){
           SUM(consumption_kwh) AS GridImport,
           SUM(generation_kwh)  AS GridExport
         FROM \`energy.sdge_usage\`
-        WHERE date BETWEEN @from AND @to
+        WHERE date BETWEEN DATE '${from}' AND DATE '${to}'
         GROUP BY date
       ),
       daily AS (
@@ -101,12 +102,7 @@ async function loadKPIs(ctx){
       FROM daily
     `;
 
-    // Inline dates (Apps Script handler does not accept query params for SQL yet)
-    const sqlWithParams = sql
-      .replace('@from', `DATE '${from}'`)
-      .replace('@to',   `DATE '${to}'`);
-
-    const rows = await fetchQuery(sqlWithParams);
+    const rows = await fetchQuery(sql);
     const r = rows[0] || {};
 
     // Paint
@@ -119,7 +115,6 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiAvgDailyProd').textContent    = fmtKWh(r.avgDailyProd);
   }catch(err){
     console.error('kpi error:', err);
-    // Optional: show error inline
     const el = document.createElement('div');
     el.className = 'text-sm text-red-600';
     el.textContent = `KPI error: ${err.message}`;
