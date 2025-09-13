@@ -9,7 +9,6 @@
   <link rel="apple-touch-icon" href="icons/icon-192.png" />
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js" defer></script>
-  <script src="https://accounts.google.com/gsi/client" async defer onload="window.__gisLoaded && window.__gisLoaded()"></script>
   <style>
     :root { --safe-bottom: env(safe-area-inset-bottom, 0px); }
     .card{background:#fff;border-radius:1rem;box-shadow:0 8px 16px rgba(0,0,0,.06);padding:1rem}
@@ -25,15 +24,8 @@
   </style>
 </head>
 <body class="bg-gray-50 text-gray-900">
-  <header class="px-4 pt-4 pb-2 flex items-center justify-between gap-3">
-    <div>
-      <h1 class="text-xl font-bold">Household Electricity & Solar</h1>
-      <p class="text-xs text-gray-600">Mobile PWA. Reads your Google Sheet.</p>
-    </div>
-    <div class="flex items-center gap-2">
-      <button id="signInBtn" type="button" class="px-3 py-2 rounded-xl bg-gray-900 text-white text-sm">Sign in</button>
-      <button id="signOutBtn" type="button" class="px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm hidden">Sign out</button>
-    </div>
+  <header class="px-4 pt-4 pb-2 flex items-center justify-center">
+    <h1 class="text-xl font-bold">Household Electricity & Solar</h1>
   </header>
 
   <main id="view" class="px-4 pb-24 space-y-4">
