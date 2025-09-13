@@ -98,7 +98,7 @@ async function loadKPIs(ctx){
         SUM(GridExport)                         AS totalExp,
         AVG(HomeKWh)                            AS avgDailyUse,
         AVG(Production)                         AS avgDailyProd,
-        SAFE_DIVIDE(SUM(Production) - SUM(GridExport), NULLIF(SUM(HomeKWh), 0)) AS selfSufficiency
+        SAFE_DIVIDE(SUM(Production) , NULLIF(SUM(HomeKWh), 0)) AS selfSufficiency
       FROM daily
     `;
 
