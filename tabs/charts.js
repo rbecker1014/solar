@@ -68,8 +68,8 @@ async function load(){
       WITH daily AS (
         SELECT
           x.date AS Date,
-          SUM(x.Production)              AS SolarkWh,
-          SUM(x.Production) + SUM(x.Net) AS HomekWh
+          coalesce(SUM(x.Production) ,0)              AS SolarkWh,
+          coalesce(SUM(x.Production) + SUM(x.Net),0)  AS HomekWh
         FROM (
           SELECT
             SP.date,
@@ -107,8 +107,8 @@ async function load(){
       ${baseDailyCTE}
       SELECT
         FORMAT_DATE('%Y-%m', Date) AS month,
-        SUM(HomekWh)               AS usage,
-        SUM(SolarkWh)              AS prod
+       coalesce( SUM(HomekWh)   ,0)            AS usage,
+       coalesce(  SUM(SolarkWh)     ,0)         AS prod
       FROM daily
       WHERE Date >= DATE_SUB(CURRENT_DATE(), INTERVAL 365 DAY)
       GROUP BY month
