@@ -18,7 +18,7 @@ export async function mount(root){
       <div class="card">
         <div class="flex items-center justify-between">
           <h2 class="font-semibold">Monthly Usage and Solar</h2>
-        
+          <button id="refreshBtn" type="button" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Refresh</button>
         </div>
         <canvas id="chartMonthly" class="mt-3"></canvas>
       </div>
@@ -35,11 +35,14 @@ export async function mount(root){
     </section>
   `;
 
-  // Bind
-  $root.querySelector('#refreshBtn').addEventListener('click', async () => {
-    log('manual refresh');
-    await load();
-  });
+  // Bind safely
+  const btn = $root.querySelector('#refreshBtn');
+  if (btn) {
+    btn.addEventListener('click', async () => {
+      log('manual refresh');
+      await load();
+    });
+  }
 
   await load();
 }
@@ -68,8 +71,8 @@ async function load(){
       WITH daily AS (
         SELECT
           x.date AS Date,
-          coalesce(SUM(x.Production) ,0)              AS SolarkWh,
-          coalesce(SUM(x.Production) + SUM(x.Net),0)  AS HomekWh
+          COALESCE(SUM(x.Production), 0)              AS SolarkWh,
+          COALESCE(SUM(x.Production) + SUM(x.Net), 0) AS HomeKWh
         FROM (
           SELECT
             SP.date,
@@ -90,25 +93,25 @@ async function load(){
       )
     `;
 
-    // Last 7 days (date, usage, prod) for the daily bar chart
+    // Last 7 days (date, usage, prod)
     const sqlRecent7 = `
       ${baseDailyCTE}
       SELECT
         Date AS date,
-        HomekWh AS usage,
+        HomeKWh AS usage,
         SolarkWh AS prod
       FROM daily
       WHERE Date >= DATE_SUB(CURRENT_DATE(), INTERVAL 7 DAY)
       ORDER BY Date
     `;
 
-    // Last 12 months aggregated by month label (month, usage, prod) for the monthly bar chart
+    // Last 12 months aggregated by month label (month, usage, prod)
     const sqlMonthly12 = `
       ${baseDailyCTE}
       SELECT
         FORMAT_DATE('%Y-%m', Date) AS month,
-       coalesce( SUM(HomekWh)   ,0)            AS usage,
-       coalesce(  SUM(SolarkWh)     ,0)         AS prod
+        COALESCE(SUM(HomeKWh), 0)  AS usage,
+        COALESCE(SUM(SolarkWh), 0) AS prod
       FROM daily
       WHERE Date >= DATE_SUB(CURRENT_DATE(), INTERVAL 365 DAY)
       GROUP BY month
