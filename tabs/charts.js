@@ -7,7 +7,7 @@ const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJ
 const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
 let $root = null;
-let state = { recent: [], monthly: [] };
+let state = { recent: [], monthly: [], dailyWindowStart: 0 };
 let monthlyChart = null;
 let dailyChart = null;
 let rangeListener = null;
@@ -30,7 +30,19 @@ export async function mount(root,ctx){
       <div class="card">
         <h2 class="font-semibold">Daily Usage and Solar</h2>
         <canvas id="chart7d" class="mt-3"></canvas>
-      </div>
+           <div class="mt-4 space-y-2">
+          <input
+            id="dailyWindowSlider"
+            type="range"
+            min="0"
+            max="0"
+            value="0"
+            step="1"
+            class="w-full"
+          />
+          <div id="dailyWindowLabel" class="text-sm text-gray-600"></div>
+        </div>
+        </div>
 
       <div class="card">
         <h3 class="text-lg font-semibold mb-2">Log</h3>
@@ -152,7 +164,9 @@ async function load(ctx){
 
     state.recent = recent;
     state.monthly = monthly;
-
+    const windowSize = Math.min(7, state.recent.length || 0);
+    state.dailyWindowStart = Math.max(0, (state.recent.length || 0) - windowSize);
+   
     draw();
     log('GET charts: ' + JSON.stringify({ recent: recent.length, monthly: monthly.length, from, to }));
   } catch (err) {
@@ -162,14 +176,24 @@ async function load(ctx){
 }
 
 function draw(){
-  // Monthly chart
-  const ctxMonthly = $root.querySelector('#chartMonthly');
-  if (ctxMonthly){
-    const labels = state.monthly.map(r => r.month);
-    const use = state.monthly.map(r => Number(r.usage || 0));
-    const solar = state.monthly.map(r => Number(r.prod || 0));
+  drawMonthlyChart();
+  drawDailyChart();
+}
 
-    if (monthlyChart) monthlyChart.destroy();
+function drawMonthlyChart(){
+  const ctxMonthly = $root.querySelector('#chartMonthly');
+  if (!ctxMonthly) return;
+
+  const labels = state.monthly.map(r => r.month);
+  const use = state.monthly.map(r => Number(r.usage || 0));
+  const solar = state.monthly.map(r => Number(r.prod || 0));
+
+  if (monthlyChart && monthlyChart.canvas !== ctxMonthly){
+    monthlyChart.destroy();
+    monthlyChart = null;
+  }
+
+  if (!monthlyChart){
     monthlyChart = new Chart(ctxMonthly, {
       type: 'bar',
       data: {
@@ -185,16 +209,78 @@ function draw(){
         scales: { y: { beginAtZero: true } }
       }
     });
+     return;
   }
 
-  // Daily chart for the selected range
-  const ctxDaily = $root.querySelector('#chart7d');
-  if (ctxDaily){
-    const labels = state.recent.map(r => r.date);
-    const use = state.recent.map(r => Number(r.usage || 0));
-    const solar = state.recent.map(r => Number(r.prod || 0));
+  monthlyChart.data.labels = labels;
+  if (monthlyChart.data.datasets?.[0]){
+    monthlyChart.data.datasets[0].data = use;
+  }
+ if (monthlyChart.data.datasets?.[1]){
+    monthlyChart.data.datasets[1].data = solar;
+  }
+  monthlyChart.update();
+}
 
-    if (dailyChart) dailyChart.destroy();
+function getDailyWindow(){
+  const total = state.recent.length;
+  const windowSize = total > 0 ? Math.min(7, total) : 0;
+  const maxStart = windowSize > 0 ? Math.max(0, total - windowSize) : 0;
+
+  if (state.dailyWindowStart > maxStart) state.dailyWindowStart = maxStart;
+  if (state.dailyWindowStart < 0) state.dailyWindowStart = 0;
+
+  const start = windowSize > 0 ? state.dailyWindowStart : 0;
+  const rows = windowSize > 0 ? state.recent.slice(start, start + windowSize) : [];
+
+  return { rows, windowSize, maxStart, start };
+}
+
+function drawDailyChart(){
+  const ctxDaily = $root.querySelector('#chart7d');
+  if (!ctxDaily) return;
+
+  const slider = $root.querySelector('#dailyWindowSlider');
+  const label = $root.querySelector('#dailyWindowLabel');
+  const { rows, windowSize, maxStart, start } = getDailyWindow();
+
+  if (slider){
+    slider.min = 0;
+    slider.max = maxStart;
+    slider.step = 1;
+    slider.value = start;
+    slider.disabled = maxStart === 0;
+    slider.title = slider.disabled
+      ? 'Not enough history to adjust the window'
+      : 'Move to view earlier 7-day ranges';
+    slider.classList.toggle('opacity-50', slider.disabled);
+
+    if (!slider.dataset.bound){
+      slider.addEventListener('input', handleDailySliderInput);
+      slider.dataset.bound = '1';
+    }
+  }
+
+  if (label){
+    if (rows.length){
+      const dayCount = rows.length;
+      const windowLabel = dayCount === 7 ? '7-day window' : `${dayCount} day${dayCount === 1 ? '' : 's'} available`;
+      label.textContent = `Showing ${rows[0].date} – ${rows[rows.length - 1].date} (${windowLabel})`;
+    } else {
+      label.textContent = 'No data available';
+    }
+  }
+
+  const labels = rows.map(r => r.date);
+  const use = rows.map(r => Number(r.usage || 0));
+  const solar = rows.map(r => Number(r.prod || 0));
+
+  if (dailyChart && dailyChart.canvas !== ctxDaily){
+    dailyChart.destroy();
+    dailyChart = null;
+  }
+
+  if (!dailyChart){ 
     dailyChart = new Chart(ctxDaily, {
       type: 'bar',
       data: {
@@ -210,5 +296,20 @@ function draw(){
         scales: { y: { beginAtZero: true } }
       }
     });
+  return;
   }
+
+  dailyChart.data.labels = labels;
+  if (dailyChart.data.datasets?.[0]){
+    dailyChart.data.datasets[0].data = use;
+  }
+if (dailyChart.data.datasets?.[1]){
+    dailyChart.data.datasets[1].data = solar;
+  }
+  dailyChart.update();
+}
+
+function handleDailySliderInput(event){
+  state.dailyWindowStart = Number(event.target.value) || 0;
+  drawDailyChart();
 }
