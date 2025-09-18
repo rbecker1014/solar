@@ -1,10 +1,14 @@
 // app.core.js
 // Shared state, auth, Sheets, router, and lazy tab loader
+import { getDefaultDateRange } from './tabs/date-range.js';
+
+const defaultRange = getDefaultDateRange();
+
 const state = {
   sheetId: "",
   dashboardSheet: "",
-  startDate: "2025-06-01",
-  endDate: "2025-12-31",
+  startDate: defaultRange.from,
+  endDate: defaultRange.to,
   importRate: 0.35,
   exportRate: 0.05,
   rows: [],
