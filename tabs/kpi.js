@@ -2,7 +2,7 @@
 
 import { renderDateRange, getNormalizedDateRange } from './date-range.js';
 
-/ Same endpoint and token used by data.js / charts.js
+// Same endpoint and token used by data.js / charts.js
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
 const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
