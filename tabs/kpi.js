@@ -1,17 +1,21 @@
 // tabs/kpi.js
 
-// Same endpoint and token used by data.js / charts.js
+import { renderDateRange, getNormalizedDateRange } from './date-range.js';
+
+/ Same endpoint and token used by data.js / charts.js
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
 const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
 let $root = null;
+let rangeListener = null;
 
 export async function mount(root, ctx){
   $root = root;
 
   // Layout: removed Self Consumption, added Avg Daily Production
   $root.innerHTML = `
-    <section class="space-y-3">
+    <section class="space-y-3" data-kpi-root>
+      <div data-range-host></div>
       <div class="grid grid-cols-2 gap-3">
         <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
         <div class="card"><div class="kpi" id="kpiSolar">0 kWh</div><div class="kpi-label">Total Solar</div></div>
@@ -26,7 +30,29 @@ export async function mount(root, ctx){
     </section>
   `;
 
-  await loadKPIs(ctx);
+  const rangeHost = $root.querySelector('[data-range-host]');
+  renderDateRange(rangeHost, ctx, {
+    id: 'kpi-range',
+    onRangeChange: () => loadKPIs(ctx),
+  });
+
+  if (rangeListener){
+    document.removeEventListener('app:date-range-change', rangeListener);
+  }
+
+  rangeListener = (event) => {
+    if (!$root || !$root.querySelector('[data-kpi-root]')){
+      document.removeEventListener('app:date-range-change', rangeListener);
+      rangeListener = null;
+      return;
+    }
+    if (event?.detail?.source === 'kpi-range') return;
+    loadKPIs(ctx);
+  };
+
+  document.addEventListener('app:date-range-change', rangeListener);
+
+await loadKPIs(ctx);
 }
 
 function fmtKWh(v){ return `${Number(v || 0).toFixed(0)} kWh`; }
@@ -40,21 +66,9 @@ async function fetchQuery(sql){
   return Array.isArray(j.rows) ? j.rows : [];
 }
 
-function getDateRangeFromState(ctx){
-  const s = ctx?.state?.startDate;
-  const e = ctx?.state?.endDate;
-  if (s && e) return { from: s, to: e };
-  // Fallback to last 30 days
-  const to = new Date();
-  const from = new Date(to);
-  from.setDate(to.getDate() - 30);
-  const iso = d => d.toISOString().slice(0,10);
-  return { from: iso(from), to: iso(to) };
-}
-
 async function loadKPIs(ctx){
   try{
-    const { from, to } = getDateRangeFromState(ctx);
+    const { from, to } = getNormalizedDateRange(ctx?.state);
 
     // Embed dates directly to avoid leftover @from/@to placeholders
     const sql = `
