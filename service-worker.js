@@ -1,7 +1,7 @@
-const CACHE='solar-pwa-v1';
+const CACHE='solar-pwa-v2';
 const CORE=[
   '/index.html','/app.core.js',
-  '/tabs/kpi.js','/tabs/charts.js','/tabs/data.js','/tabs/entry.js','/tabs/settings.js',
+  '/tabs/kpi.js','/tabs/charts.js','/tabs/data.js','/tabs/settings.js',
   '/icons/icon-192.png','/icons/icon-512.png','/manifest.webmanifest'
 ];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));});
