@@ -38,7 +38,19 @@ const state = {
 };
 
 async function loadData(){
-  if (accessToken) { await loadDataPrivate(); return; }
+  const token = globalThis.accessToken;
+  const privateLoader = typeof globalThis.loadDataPrivate === 'function' ? globalThis.loadDataPrivate : null;
+  if (token && privateLoader) {
+    await privateLoader();
+    return;
+  }
+  if (typeof buildGvizUrl !== 'function' || typeof parseGviz !== 'function' ||
+      typeof tryAutoMap !== 'function' || typeof extractRowsByIndex !== 'function') {
+    console.warn('GViz helpers missing. Skipping remote sheet load.');
+    state.rows = [];
+    return;
+  }
+
   const id = state.sheetId;
   const name = state.dashboardSheet;
   const url = buildGvizUrl(id, name);
