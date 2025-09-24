@@ -12,10 +12,12 @@ export const CLOUD_STORAGE_BUCKET = 'solar-data-api-ingest';
 export const CLOUD_STORAGE_PREFIX = 'incoming';
 
 export const DEFAULT_BIGQUERY_PROJECT = 'solar-data-api';
+
 // BigQuery multi-regions are usually written in upper-case (e.g. US, EU). The
 // SDGE ingestion dataset lives in the US multi-region, so we default to that
 // value and still let the Settings tab override it when needed.
 export const DEFAULT_BIGQUERY_LOCATION = 'US';
+
 
 export const DEFAULT_BIGQUERY_SQL = `CREATE OR REPLACE EXTERNAL TABLE \`solar-data-api.energy.sdge_ext_raw\`
 (
@@ -107,4 +109,5 @@ WHERE u.meter_number = picked.meter_number
   AND u.date = picked.date
   AND u.start_time = picked.start_time
   AND u.TOU_category IS NULL;
+
 `;

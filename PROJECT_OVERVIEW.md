@@ -33,6 +33,7 @@ Tabs share date range changes via a `document` event so that selecting a range i
 - **Google Sheets API** – The entry tab reads the most recent spreadsheet row and appends new entries using OAuth tokens acquired at runtime.
 - **Google Cloud Storage & BigQuery** – The settings tab requests the broader Cloud scopes, uploads selected SDGE files into `gs://solar-data-api-ingest/incoming/`, and triggers a BigQuery job (defaults stored in shared state, with the US multi-region preselected but editable) to process the uploaded data.
 
+
 ## Additional Notes
 
 - The mobile experience relies on Tailwind-style utility classes baked into `index.html` and shared styles; no build tooling is required.
