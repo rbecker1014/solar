@@ -315,6 +315,7 @@ export async function mount(root, ctx){
   if (locationInput) locationInput.value = state?.bigQueryLocation || DEFAULT_BIGQUERY_LOCATION;
   if (sqlInput) sqlInput.value = state?.bigQuerySql || DEFAULT_BIGQUERY_SQL;
 
+
   function updateUploadButtonState(){
     const hasFile = Boolean(fileInput?.files && fileInput.files.length);
     const hasSql = Boolean((sqlInput?.value || '').trim());
@@ -329,6 +330,7 @@ export async function mount(root, ctx){
   } else {
     setStatus(cloudStatus, 'Authorize to enable Cloud Storage and BigQuery actions.', 'info');
   }
+
 
   saveRatesBtn?.addEventListener('click', async () => {
     if (!state) return;
@@ -354,6 +356,7 @@ export async function mount(root, ctx){
         rateStatus.textContent = 'Failed to refresh data.';
         rateStatus.className = 'text-sm bad';
       }
+
     }
     if (typeof window !== 'undefined' && typeof window.__showTab === 'function'){
       window.__showTab('kpi');
@@ -370,12 +373,10 @@ export async function mount(root, ctx){
     const normalized = normalizeLocation(locationInput.value);
     if (state) state.bigQueryLocation = normalized;
     if (normalized) locationInput.value = normalized;
-
   });
   sqlInput?.addEventListener('input', () => {
     if (state) state.bigQuerySql = sqlInput.value;
     updateUploadButtonState();
-
   });
 
   fileInput?.addEventListener('change', () => {
@@ -399,6 +400,7 @@ export async function mount(root, ctx){
     } finally {
       authorizeBtn.disabled = false;
       updateUploadButtonState();
+
     }
   });
 
@@ -422,6 +424,7 @@ export async function mount(root, ctx){
 
     if (cloudProgress) cloudProgress.innerHTML = '';
     setStatus(cloudStatus, 'Starting upload…', 'info');
+
 
     if (authorizeBtn) authorizeBtn.disabled = true;
     if (uploadBtn) uploadBtn.disabled = true;

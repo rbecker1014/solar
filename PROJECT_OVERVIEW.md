@@ -14,7 +14,6 @@ This repository contains a mobile-first progressive web application (PWA) for tr
 - **tabs/date-range.js** – Hosts reusable helpers for rendering the date range picker UI and normalizing the selected start/end dates for BigQuery-style SQL queries.
 - **tabs/cloud-config.js** – Exposes the OAuth client ID, Cloud Storage bucket information, and default BigQuery settings (including the US multi-region location) used anywhere Google Cloud access is required (entry and settings tabs).
 
-
 ## Tab Modules (`tabs/`)
 
 Each tab mounts into the shared `<main id="view">` element and drives its own UI:
