@@ -1,7 +1,27 @@
 const DAY_MS = 86400000;
 export const DEFAULT_WINDOW_DAYS = 30;
 const DEFAULT_SLIDER_MAX = 730;
+const INITIAL_START_DATE = '2025-06-01';
 
+function getToday(){
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  return today;
+}
+
+function getTrailingDaysRange(days){
+  const end = getToday();
+  const start = new Date(end);
+  start.setDate(start.getDate() - (days - 1));
+  return { from: formatDate(start), to: formatDate(end) };
+}
+
+function getTrailingMonthsRange(months){
+  const end = getToday();
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - months);
+  return { from: formatDate(start), to: formatDate(end) };
+}
 function toDate(value){
   if (!value) return null;
   const iso = String(value).slice(0, 10);
@@ -25,9 +45,11 @@ function differenceInDays(start, end){
 }
 
 export function getDefaultDateRange(){
-  const end = new Date();
-  const start = new Date(end);
-  start.setDate(end.getDate() - (DEFAULT_WINDOW_DAYS - 1));
+ const start = toDate(INITIAL_START_DATE);
+  const end = getToday();
+  if (!start){
+    return getTrailingDaysRange(DEFAULT_WINDOW_DAYS);
+  }
   return { from: formatDate(start), to: formatDate(end) };
 }
 
@@ -65,7 +87,15 @@ export function renderDateRange(container, ctx, options = {}){
   const { state } = ctx || {};
   const id = options.id || `range-${Math.random().toString(36).slice(2)}`;
   const normalized = getNormalizedDateRange(state);
-
+ const quickPicks = [
+    { key: '30d', label: 'Last 30 Days', getRange: () => getTrailingDaysRange(30) },
+    { key: 'quarter', label: 'Last Qtr', getRange: () => getTrailingMonthsRange(3) },
+    { key: '6mo', label: 'Last 6 Mo', getRange: () => getTrailingMonthsRange(6) },
+    { key: '12mo', label: 'Last 12 Mo', getRange: () => getTrailingMonthsRange(12) },
+  ];
+  const quickPickMarkup = quickPicks
+    .map((pick) => `<button type="button" class="px-3 py-1.5 rounded-lg bg-gray-100 text-sm" data-role="quickRange" data-range="${pick.key}">${pick.label}</button>`)
+    .join('');
   if (state){
     if (state.startDate !== normalized.from) state.startDate = normalized.from;
     if (state.endDate !== normalized.to) state.endDate = normalized.to;
@@ -89,8 +119,8 @@ export function renderDateRange(container, ctx, options = {}){
         <input id="${id}-slider" type="range" min="1" max="${DEFAULT_SLIDER_MAX}" step="1" class="input" data-role="slider" />
         <div class="text-xs text-gray-500 mt-1" data-role="sliderValue"></div>
       </div>
-      <div class="flex items-center">
-        <button type="button" class="px-3 py-1.5 rounded-lg bg-gray-100 text-sm" data-role="clear">Last 30 days</button>
+ <div class="flex flex-wrap items-center gap-2">
+        ${quickPickMarkup}
       </div>
     </div>
     <p class="text-xs text-gray-500 mt-2" data-role="summary"></p>
@@ -106,7 +136,7 @@ export function renderDateRange(container, ctx, options = {}){
   const slider = card.querySelector('[data-role="slider"]');
   const sliderValue = card.querySelector('[data-role="sliderValue"]');
   const summary = card.querySelector('[data-role="summary"]');
-  const clearBtn = card.querySelector('[data-role="clear"]');
+  const quickButtons = card.querySelectorAll('[data-role="quickRange"]');
 
   function updateSummary(range){
     const spanDays = differenceInDays(range.from, range.to);
@@ -194,9 +224,15 @@ export function renderDateRange(container, ctx, options = {}){
   startInput.addEventListener('change', handleInputChange);
   endInput.addEventListener('change', handleInputChange);
 
-  clearBtn.addEventListener('click', (event) => {
-    event.preventDefault();
-    commitRange(getDefaultDateRange(), id);
+  quickButtons.forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.preventDefault();
+      const key = event.currentTarget?.dataset?.range;
+      const pick = quickPicks.find((item) => item.key === key);
+      if (!pick) return;
+      const range = pick.getRange();
+      commitRange(range, `${id}-${key}`);
+    });
   });
 
   const syncListener = (event) => {
