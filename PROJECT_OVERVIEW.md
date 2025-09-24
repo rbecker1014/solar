@@ -12,7 +12,8 @@ This repository contains a mobile-first progressive web application (PWA) for tr
 ## Shared Utilities
 
 - **tabs/date-range.js** – Hosts reusable helpers for rendering the date range picker UI and normalizing the selected start/end dates for BigQuery-style SQL queries.
-- **tabs/cloud-config.js** – Exposes the OAuth client ID, Cloud Storage bucket information, and default BigQuery settings used anywhere Google Cloud access is required (entry and settings tabs).
+- **tabs/cloud-config.js** – Exposes the OAuth client ID, Cloud Storage bucket information, and default BigQuery settings (including the US multi-region location) used anywhere Google Cloud access is required (entry and settings tabs).
+
 
 ## Tab Modules (`tabs/`)
 
@@ -31,7 +32,8 @@ Tabs share date range changes via a `document` event so that selecting a range i
 
 - **Google Apps Script endpoint** – The KPI, charts, data, and record tabs communicate with the hosted Apps Script endpoint (`https://script.google.com/.../exec`) using a shared token. This script aggregates solar production and SDGE usage data and serves as the bridge to Google Sheets or other data sources.
 - **Google Sheets API** – The entry tab reads the most recent spreadsheet row and appends new entries using OAuth tokens acquired at runtime.
-- **Google Cloud Storage & BigQuery** – The settings tab requests the broader Cloud scopes, uploads selected SDGE files into `gs://solar-data-api-ingest/incoming/`, and triggers a BigQuery job (defaults stored in shared state) to process the uploaded data.
+- **Google Cloud Storage & BigQuery** – The settings tab requests the broader Cloud scopes, uploads selected SDGE files into `gs://solar-data-api-ingest/incoming/`, and triggers a BigQuery job (defaults stored in shared state, with the US multi-region preselected but editable) to process the uploaded data.
+
 
 ## Additional Notes
 

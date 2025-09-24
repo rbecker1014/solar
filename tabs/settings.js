@@ -121,6 +121,11 @@ function buildObjectName(file){
   return `${prefix}${timestamp}-${baseName}`;
 }
 
+function normalizeLocation(value){
+  const trimmed = (value || '').trim();
+  return trimmed ? trimmed.toUpperCase() : '';
+}
+
 async function uploadFileToBucket(token, file){
   const objectName = buildObjectName(file);
   const url = `https://storage.googleapis.com/upload/storage/v1/b/${encodeURIComponent(CLOUD_STORAGE_BUCKET)}/o?uploadType=media&name=${encodeURIComponent(objectName)}`;
@@ -231,9 +236,10 @@ function setStatus(el, message, variant = 'info'){
 export async function mount(root, ctx){
   const { state, loadData } = ctx || {};
   if (state){
-    if (!state.bigQueryProject) state.bigQueryProject = DEFAULT_BIGQUERY_PROJECT;
-    if (!state.bigQueryLocation) state.bigQueryLocation = DEFAULT_BIGQUERY_LOCATION;
-    if (!state.bigQuerySql) state.bigQuerySql = DEFAULT_BIGQUERY_SQL;
+    state.bigQueryProject = state.bigQueryProject || DEFAULT_BIGQUERY_PROJECT;
+    state.bigQueryLocation = normalizeLocation(state.bigQueryLocation) || DEFAULT_BIGQUERY_LOCATION;
+    state.bigQuerySql = state.bigQuerySql || DEFAULT_BIGQUERY_SQL;
+
   }
 
   root.innerHTML = `
@@ -358,11 +364,18 @@ export async function mount(root, ctx){
     if (state) state.bigQueryProject = projectInput.value;
   });
   locationInput?.addEventListener('input', () => {
-    if (state) state.bigQueryLocation = locationInput.value;
+    if (state) state.bigQueryLocation = normalizeLocation(locationInput.value);
+  });
+  locationInput?.addEventListener('blur', () => {
+    const normalized = normalizeLocation(locationInput.value);
+    if (state) state.bigQueryLocation = normalized;
+    if (normalized) locationInput.value = normalized;
+
   });
   sqlInput?.addEventListener('input', () => {
     if (state) state.bigQuerySql = sqlInput.value;
     updateUploadButtonState();
+
   });
 
   fileInput?.addEventListener('change', () => {
@@ -395,7 +408,7 @@ export async function mount(root, ctx){
       return;
     }
     const projectId = (projectInput?.value || DEFAULT_BIGQUERY_PROJECT).trim() || DEFAULT_BIGQUERY_PROJECT;
-    const location = (locationInput?.value || DEFAULT_BIGQUERY_LOCATION).trim() || DEFAULT_BIGQUERY_LOCATION;
+    const location = normalizeLocation(locationInput?.value || state?.bigQueryLocation || DEFAULT_BIGQUERY_LOCATION) || DEFAULT_BIGQUERY_LOCATION;
     const sql = (sqlInput?.value || '').trim();
     if (!sql){
       setStatus(cloudStatus, 'Enter the SQL to run after upload.', 'error');
@@ -458,7 +471,11 @@ export async function mount(root, ctx){
       setStatus(cloudStatus, 'Upload and BigQuery run completed.', 'success');
     } catch (err) {
       console.error('Cloud ingest error:', err);
-      const message = err?.message || 'Upload or query failed.';
+
+      let message = err?.message || 'Upload or query failed.';
+      if (/Dataset [^ ]+ was not found in location/i.test(message)){
+        message = `${message} Confirm that the BigQuery location matches your dataset region (e.g. US, EU, US-WEST2).`;
+      }
       if (statusLine){
         statusLine.classList.remove('text-gray-600');
         statusLine.classList.add('bad');

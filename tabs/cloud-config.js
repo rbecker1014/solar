@@ -12,7 +12,12 @@ export const CLOUD_STORAGE_BUCKET = 'solar-data-api-ingest';
 export const CLOUD_STORAGE_PREFIX = 'incoming';
 
 export const DEFAULT_BIGQUERY_PROJECT = 'solar-data-api';
-export const DEFAULT_BIGQUERY_LOCATION = 'us-west2';
+
+// BigQuery multi-regions are usually written in upper-case (e.g. US, EU). The
+// SDGE ingestion dataset lives in the US multi-region, so we default to that
+// value and still let the Settings tab override it when needed.
+export const DEFAULT_BIGQUERY_LOCATION = 'US';
+
 
 export const DEFAULT_BIGQUERY_SQL = `-- Replace this with the SQL statement that processes the uploaded SDGE file.
 -- Example:
