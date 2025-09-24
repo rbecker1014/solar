@@ -1,7 +1,7 @@
 // tabs/entry.js — writes to Google Sheets like your working HTML,
 // with sign in UI, token refresh, and 401 retry.
 
-const GOOGLE_CLIENT_ID = "656801194507-ujbqhlcm5ou4nqfq25c5j657jl6gnkoo.apps.googleusercontent.com";
+import { GOOGLE_OAUTH_CLIENT_ID as GOOGLE_CLIENT_ID } from './cloud-config.js';
 const SHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets";
 let accessToken = null;
 let tokenClient = null;
