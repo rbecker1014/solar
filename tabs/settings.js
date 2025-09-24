@@ -239,6 +239,7 @@ export async function mount(root, ctx){
     state.bigQueryProject = state.bigQueryProject || DEFAULT_BIGQUERY_PROJECT;
     state.bigQueryLocation = normalizeLocation(state.bigQueryLocation) || DEFAULT_BIGQUERY_LOCATION;
     state.bigQuerySql = state.bigQuerySql || DEFAULT_BIGQUERY_SQL;
+
   }
 
   root.innerHTML = `
@@ -369,10 +370,12 @@ export async function mount(root, ctx){
     const normalized = normalizeLocation(locationInput.value);
     if (state) state.bigQueryLocation = normalized;
     if (normalized) locationInput.value = normalized;
+
   });
   sqlInput?.addEventListener('input', () => {
     if (state) state.bigQuerySql = sqlInput.value;
     updateUploadButtonState();
+
   });
 
   fileInput?.addEventListener('change', () => {
@@ -468,6 +471,7 @@ export async function mount(root, ctx){
       setStatus(cloudStatus, 'Upload and BigQuery run completed.', 'success');
     } catch (err) {
       console.error('Cloud ingest error:', err);
+
       let message = err?.message || 'Upload or query failed.';
       if (/Dataset [^ ]+ was not found in location/i.test(message)){
         message = `${message} Confirm that the BigQuery location matches your dataset region (e.g. US, EU, US-WEST2).`;
