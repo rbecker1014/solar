@@ -1,4 +1,4 @@
-# Solar Production → BigQuery Integration
+# Solar Production → BigQuery Integration RB
 
 This project records daily solar production data into BigQuery via a Google Apps Script Web App.
 It replaces the old Excel-based workflow with a simple, token-protected HTTP API and static web client.
