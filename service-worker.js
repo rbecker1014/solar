@@ -1,9 +1,11 @@
-const CACHE='solar-pwa-v2';
-const CORE=[
-  '/index.html','/app.core.js',
-  '/tabs/kpi.js','/tabs/charts.js','/tabs/data.js','/tabs/settings.js',
-  '/icons/icon-192.png','/icons/icon-512.png','/manifest.webmanifest'
+const CACHE='solar-pwa-v3';
+const CORE_PATHS=[
+  'index.html','app.core.js',
+  'tabs/kpi.js','tabs/charts.js','tabs/data.js','tabs/settings.js',
+  'icons/icon-192.png','icons/icon-512.png','manifest.webmanifest'
 ];
+const BASE_PATH=self.location.pathname.replace(/service-worker\.js$/, '');
+const CORE=CORE_PATHS.map(path=>new URL(`${BASE_PATH}${path}`, self.location.origin).toString());
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(CORE)));});
 self.addEventListener('fetch',e=>{
   e.respondWith(
