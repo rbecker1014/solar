@@ -1,5 +1,6 @@
 // app.core.js
 // Shared state, auth, Sheets, router, and lazy tab loader
+import './pwa-install.js';
 import { getDefaultDateRange } from './tabs/date-range.js';
 import {
   DEFAULT_BIGQUERY_PROJECT,
