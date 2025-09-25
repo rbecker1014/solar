@@ -338,6 +338,7 @@ export async function mount(root, ctx){
   if (locationInput) locationInput.value = state?.bigQueryLocation || DEFAULT_BIGQUERY_LOCATION;
   if (sqlInput) sqlInput.value = state?.bigQuerySql || DEFAULT_BIGQUERY_SQL;
 
+
   const manualInstallMessage = (() => {
     if (typeof navigator === 'undefined') return '';
     const ua = navigator.userAgent || navigator.vendor || '';
@@ -352,6 +353,7 @@ export async function mount(root, ctx){
     }
     return '';
   })();
+
 
   function setInstallStatus(message, variant = 'info'){
     if (!installStatus) return;
@@ -376,6 +378,7 @@ export async function mount(root, ctx){
     }
     installCard.hidden = false;
     if (installButton){
+
       const showManual = !canInstall && manualInstallMessage;
       installButton.disabled = !canInstall && !showManual;
       installButton.textContent = showManual ? 'Show install steps' : 'Add to Home Screen';
@@ -385,6 +388,7 @@ export async function mount(root, ctx){
       if (manualInstallMessage){
         setInstallStatus(manualInstallMessage, 'info');
       } else if (currentVariant !== 'success' && currentVariant !== 'error'){
+
         setInstallStatus('The install prompt becomes available once the browser has finished preparing the app.', 'info');
       }
     } else if (currentVariant !== 'success' && currentVariant !== 'error'){
@@ -404,6 +408,7 @@ export async function mount(root, ctx){
   removeInstallListener = onPwaInstallChange(handleInstallChange);
 
   installButton?.addEventListener('click', async () => {
+
     const snapshotBeforePrompt = getPwaInstallState();
     const showManual = !snapshotBeforePrompt.canInstall && manualInstallMessage;
     if (!snapshotBeforePrompt.canInstall){
@@ -414,6 +419,7 @@ export async function mount(root, ctx){
       }
       return;
     }
+
 
     installButton.disabled = true;
     setInstallStatus('Opening install prompt…', 'info');
@@ -431,10 +437,12 @@ export async function mount(root, ctx){
       setInstallStatus(err?.message || 'Installation failed.', 'error');
     } finally {
       const snapshot = getPwaInstallState();
+
       const allowManual = !snapshot.canInstall && manualInstallMessage;
       installButton.disabled = !snapshot.canInstall && !allowManual;
       if (!snapshot.canInstall && allowManual){
         setInstallStatus(manualInstallMessage, 'info');
+
       }
       if (!snapshot.isStandalone){
         updateInstallUI(snapshot);
