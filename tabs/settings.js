@@ -9,6 +9,11 @@ import {
   DEFAULT_BIGQUERY_SQL,
   GOOGLE_OAUTH_CLIENT_ID,
 } from './cloud-config.js';
+import {
+  getPwaInstallState,
+  onPwaInstallChange,
+  triggerPwaInstall,
+} from '../pwa-install.js';
 
 const CLOUD_SCOPE_STRING = CLOUD_SCOPES.join(' ');
 const GIS_SCRIPT_ID = 'google-identity-services';
@@ -244,6 +249,20 @@ export async function mount(root, ctx){
 
   root.innerHTML = `
     <section class="space-y-3">
+      <div class="card" id="installCard" hidden>
+        <div class="flex items-start gap-3">
+          <img src="icons/icon-192.png" alt="App icon" class="w-12 h-12 rounded-xl shadow-sm" />
+          <div class="flex-1">
+            <h2 class="font-semibold">Install on Your Device</h2>
+            <p class="text-sm text-gray-600">Add the Solar app to your Home Screen to launch it full screen without browser controls.</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 mt-3">
+          <button id="installAppBtn" class="px-3 py-1.5 rounded-lg bg-indigo-600 text-white text-sm disabled:opacity-60 disabled:cursor-not-allowed">Add to Home Screen</button>
+          <span id="installStatus" class="text-xs text-gray-600"></span>
+        </div>
+      </div>
+
       <div class="card">
         <h2 class="font-semibold mb-2">Rates</h2>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -300,6 +319,10 @@ export async function mount(root, ctx){
   const saveRatesBtn = root.querySelector('#saveRatesBtn');
   const rateStatus = root.querySelector('#rateStatus');
 
+  const installCard = root.querySelector('#installCard');
+  const installButton = root.querySelector('#installAppBtn');
+  const installStatus = root.querySelector('#installStatus');
+
   const fileInput = root.querySelector('#cloudFileInput');
   const projectInput = root.querySelector('#bigQueryProject');
   const locationInput = root.querySelector('#bigQueryLocation');
@@ -314,6 +337,78 @@ export async function mount(root, ctx){
   if (projectInput) projectInput.value = state?.bigQueryProject || DEFAULT_BIGQUERY_PROJECT;
   if (locationInput) locationInput.value = state?.bigQueryLocation || DEFAULT_BIGQUERY_LOCATION;
   if (sqlInput) sqlInput.value = state?.bigQuerySql || DEFAULT_BIGQUERY_SQL;
+
+  function setInstallStatus(message, variant = 'info'){
+    if (!installStatus) return;
+    installStatus.textContent = message;
+    installStatus.className = 'text-xs';
+    if (variant === 'success') installStatus.classList.add('ok');
+    else if (variant === 'error') installStatus.classList.add('bad');
+    else installStatus.classList.add('text-gray-600');
+    installStatus.dataset.variant = variant;
+  }
+
+  function updateInstallUI(snapshot = getPwaInstallState()){
+    if (!installCard) return;
+    if (installCard.dataset.installed === 'true'){
+      installCard.hidden = true;
+      return;
+    }
+    const { canInstall, isStandalone } = snapshot;
+    if (isStandalone){
+      installCard.hidden = true;
+      return;
+    }
+    installCard.hidden = false;
+    if (installButton){
+      installButton.disabled = !canInstall;
+    }
+    const currentVariant = installStatus?.dataset?.variant;
+    if (!canInstall){
+      if (currentVariant !== 'success' && currentVariant !== 'error'){
+        setInstallStatus('The install prompt becomes available once the browser has finished preparing the app.', 'info');
+      }
+    } else if (currentVariant !== 'success' && currentVariant !== 'error'){
+      setInstallStatus('Tap "Add to Home Screen" to install the app without browser controls.', 'info');
+    }
+  }
+
+  let removeInstallListener = null;
+  const handleInstallChange = (snapshot) => {
+    if (!root.isConnected && typeof removeInstallListener === 'function'){
+      removeInstallListener();
+      removeInstallListener = null;
+      return;
+    }
+    updateInstallUI(snapshot);
+  };
+  removeInstallListener = onPwaInstallChange(handleInstallChange);
+
+  installButton?.addEventListener('click', async () => {
+    installButton.disabled = true;
+    setInstallStatus('Opening install prompt…', 'info');
+    try {
+      const outcome = await triggerPwaInstall();
+      if (outcome === 'accepted'){
+        setInstallStatus('Home Screen icon added. Launch the app from your Home Screen for a full screen experience.', 'success');
+        installCard.dataset.installed = 'true';
+        installCard.hidden = true;
+        return;
+      }
+      setInstallStatus('Installation was dismissed. You can try again later from this screen.', 'info');
+    } catch (err) {
+      console.error('PWA install error:', err);
+      setInstallStatus(err?.message || 'Installation failed.', 'error');
+    } finally {
+      const snapshot = getPwaInstallState();
+      if (snapshot.canInstall){
+        installButton.disabled = false;
+      }
+      if (!snapshot.isStandalone){
+        updateInstallUI(snapshot);
+      }
+    }
+  });
 
 
   function updateUploadButtonState(){
