@@ -338,6 +338,23 @@ export async function mount(root, ctx){
   if (locationInput) locationInput.value = state?.bigQueryLocation || DEFAULT_BIGQUERY_LOCATION;
   if (sqlInput) sqlInput.value = state?.bigQuerySql || DEFAULT_BIGQUERY_SQL;
 
+
+  const manualInstallMessage = (() => {
+    if (typeof navigator === 'undefined') return '';
+    const ua = navigator.userAgent || navigator.vendor || '';
+    if (/iphone|ipad|ipod/i.test(ua)){
+      return 'On iOS, tap the share icon (\u2191) and choose "Add to Home Screen" to pin the app without browser chrome.';
+    }
+    if (/android/i.test(ua)){
+      return 'Open the browser menu (\u22EE) and pick "Add to Home screen" to install the app for a full screen launch.';
+    }
+    if (/mac os x|windows|linux/i.test(ua)){
+      return 'Use your browser\'s install or "Add to Home Screen" menu option to create a launcher for this app.';
+    }
+    return '';
+  })();
+
+
   function setInstallStatus(message, variant = 'info'){
     if (!installStatus) return;
     installStatus.textContent = message;
@@ -361,11 +378,17 @@ export async function mount(root, ctx){
     }
     installCard.hidden = false;
     if (installButton){
-      installButton.disabled = !canInstall;
+
+      const showManual = !canInstall && manualInstallMessage;
+      installButton.disabled = !canInstall && !showManual;
+      installButton.textContent = showManual ? 'Show install steps' : 'Add to Home Screen';
     }
     const currentVariant = installStatus?.dataset?.variant;
     if (!canInstall){
-      if (currentVariant !== 'success' && currentVariant !== 'error'){
+      if (manualInstallMessage){
+        setInstallStatus(manualInstallMessage, 'info');
+      } else if (currentVariant !== 'success' && currentVariant !== 'error'){
+
         setInstallStatus('The install prompt becomes available once the browser has finished preparing the app.', 'info');
       }
     } else if (currentVariant !== 'success' && currentVariant !== 'error'){
@@ -385,6 +408,19 @@ export async function mount(root, ctx){
   removeInstallListener = onPwaInstallChange(handleInstallChange);
 
   installButton?.addEventListener('click', async () => {
+
+    const snapshotBeforePrompt = getPwaInstallState();
+    const showManual = !snapshotBeforePrompt.canInstall && manualInstallMessage;
+    if (!snapshotBeforePrompt.canInstall){
+      if (showManual){
+        setInstallStatus(manualInstallMessage, 'info');
+      } else {
+        setInstallStatus('The install prompt becomes available once the browser has finished preparing the app.', 'info');
+      }
+      return;
+    }
+
+
     installButton.disabled = true;
     setInstallStatus('Opening install prompt…', 'info');
     try {
@@ -401,8 +437,12 @@ export async function mount(root, ctx){
       setInstallStatus(err?.message || 'Installation failed.', 'error');
     } finally {
       const snapshot = getPwaInstallState();
-      if (snapshot.canInstall){
-        installButton.disabled = false;
+
+      const allowManual = !snapshot.canInstall && manualInstallMessage;
+      installButton.disabled = !snapshot.canInstall && !allowManual;
+      if (!snapshot.canInstall && allowManual){
+        setInstallStatus(manualInstallMessage, 'info');
+
       }
       if (!snapshot.isStandalone){
         updateInstallUI(snapshot);
