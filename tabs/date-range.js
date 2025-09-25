@@ -1,6 +1,5 @@
 const DAY_MS = 86400000;
 export const DEFAULT_WINDOW_DAYS = 30;
-const DEFAULT_SLIDER_MAX = 730;
 const INITIAL_START_DATE = '2025-06-01';
 
 function getToday(){
@@ -94,7 +93,7 @@ export function renderDateRange(container, ctx, options = {}){
     { key: '12mo', label: 'Last 12 Mo', getRange: () => getTrailingMonthsRange(12) },
   ];
   const quickPickMarkup = quickPicks
-    .map((pick) => `<button type="button" class="px-3 py-1.5 rounded-lg bg-gray-100 text-sm" data-role="quickRange" data-range="${pick.key}">${pick.label}</button>`)
+    .map((pick) => `<button type="button" class="px-2 py-1 rounded-lg bg-gray-100 text-xs font-medium whitespace-nowrap" data-role="quickRange" data-range="${pick.key}">${pick.label}</button>`)
     .join('');
   if (state){
     if (state.startDate !== normalized.from) state.startDate = normalized.from;
@@ -105,21 +104,16 @@ export function renderDateRange(container, ctx, options = {}){
   card.className = 'card';
   card.dataset.rangeCard = id;
   card.innerHTML = `
-    <div class="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end">
-      <div class="flex-1 min-w-[140px]">
-        <label class="text-sm text-gray-700 block" for="${id}-start">Start date</label>
-        <input id="${id}-start" type="date" class="input" data-role="start" />
+    <div class="flex flex-wrap items-center gap-2 sm:gap-3">
+      <div class="flex flex-col gap-1 w-[128px] flex-shrink-0">
+        <label class="text-xs font-medium text-gray-600" for="${id}-start">Start</label>
+        <input id="${id}-start" type="date" class="input input-compact" data-role="start" />
       </div>
-      <div class="flex-1 min-w-[140px]">
-        <label class="text-sm text-gray-700 block" for="${id}-end">End date</label>
-        <input id="${id}-end" type="date" class="input" data-role="end" />
+      <div class="flex flex-col gap-1 w-[128px] flex-shrink-0">
+        <label class="text-xs font-medium text-gray-600" for="${id}-end">End</label>
+        <input id="${id}-end" type="date" class="input input-compact" data-role="end" />
       </div>
-      <div class="flex-1 min-w-[200px]">
-        <label class="text-sm text-gray-700 block" for="${id}-slider">Window (days)</label>
-        <input id="${id}-slider" type="range" min="1" max="${DEFAULT_SLIDER_MAX}" step="1" class="input" data-role="slider" />
-        <div class="text-xs text-gray-500 mt-1" data-role="sliderValue"></div>
-      </div>
- <div class="flex flex-wrap items-center gap-2">
+      <div class="flex flex-wrap items-center gap-1 sm:gap-2 text-xs">
         ${quickPickMarkup}
       </div>
     </div>
@@ -133,24 +127,17 @@ export function renderDateRange(container, ctx, options = {}){
 
   const startInput = card.querySelector('[data-role="start"]');
   const endInput = card.querySelector('[data-role="end"]');
-  const slider = card.querySelector('[data-role="slider"]');
-  const sliderValue = card.querySelector('[data-role="sliderValue"]');
   const summary = card.querySelector('[data-role="summary"]');
   const quickButtons = card.querySelectorAll('[data-role="quickRange"]');
 
   function updateSummary(range){
     const spanDays = differenceInDays(range.from, range.to);
-    sliderValue.textContent = `${spanDays} day${spanDays === 1 ? '' : 's'}`;
-    summary.textContent = `Showing ${range.from} → ${range.to} (${spanDays} day${spanDays === 1 ? '' : 's'})`;
+    summary.textContent = `Showing ${range.from} → ${range.to} • ${spanDays} day${spanDays === 1 ? '' : 's'}`;
   }
 
   function syncInputs(range){
-    const spanDays = differenceInDays(range.from, range.to);
-    const max = Number(slider.max) || DEFAULT_SLIDER_MAX;
-    if (spanDays > max) slider.max = String(spanDays);
     if (startInput.value !== range.from) startInput.value = range.from;
     if (endInput.value !== range.to) endInput.value = range.to;
-    if (slider.value !== String(spanDays)) slider.value = String(spanDays);
     updateSummary(range);
   }
 
@@ -194,28 +181,6 @@ export function renderDateRange(container, ctx, options = {}){
       }
     }
   }
-
-  function handleSliderInput(event){
-    const days = Number(event.target.value) || DEFAULT_WINDOW_DAYS;
-    const current = getNormalizedDateRange({ startDate: startInput.value, endDate: endInput.value });
-    const endDate = toDate(current.to);
-    if (!endDate) return;
-    const startDate = new Date(endDate);
-    startDate.setDate(endDate.getDate() - (days - 1));
-    const nextRange = { from: formatDate(startDate), to: current.to };
-    syncInputs(nextRange);
-  }
-
-  slider.addEventListener('input', handleSliderInput);
-  slider.addEventListener('change', (event) => {
-    const days = Number(event.target.value) || DEFAULT_WINDOW_DAYS;
-    const current = getNormalizedDateRange({ startDate: startInput.value, endDate: endInput.value });
-    const endDate = toDate(current.to);
-    if (!endDate) return;
-    const startDate = new Date(endDate);
-    startDate.setDate(endDate.getDate() - (days - 1));
-    commitRange({ startDate: formatDate(startDate), endDate: current.to });
-  });
 
   function handleInputChange(){
     commitRange({ startDate: startInput.value, endDate: endInput.value });
