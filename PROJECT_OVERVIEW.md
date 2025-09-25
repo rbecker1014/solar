@@ -23,7 +23,7 @@ Each tab mounts into the shared `<main id="view">` element and drives its own UI
 - **data.js** – Presents a sortable table of raw combined data (date, solar kWh, home kWh, net, grid import/export) for the selected range. Shows helpful status messages when the range is empty or a backend request fails.
 - **record.js** – Allows manual entry of production readings. Displays the latest recorded values from Google Apps Script and submits form data back to the same endpoint, logging responses for troubleshooting.
 - **entry.js** – Provides an authenticated workflow for appending rows to a Google Sheet. Handles OAuth sign-in with Google Identity Services, reads the last populated row to calculate interpolation, and appends new rows with validation of production totals.
-- **settings.js** – Configures the SDGE ingestion workflow. After authenticating with Google Cloud scopes it uploads the selected SDGE export file to the configured Cloud Storage bucket, runs a follow-up BigQuery statement, and reports upload/query status back to the user.
+- **settings.js** – Configures the SDGE ingestion workflow. After authenticating with Google Cloud scopes it uploads the selected SDGE export file to the configured Cloud Storage bucket, runs a follow-up BigQuery statement, and reports upload/query status back to the user. It also surfaces the “Add to Home Screen” installer whenever the browser exposes the PWA prompt so mobile users can pin the app and run it without browser chrome.
 
 Tabs share date range changes via a `document` event so that selecting a range in one view keeps the others synchronized.
 
