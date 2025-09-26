@@ -38,3 +38,4 @@ Tabs share date range changes via a `document` event so that selecting a range i
 
 - The mobile experience relies on Tailwind-style utility classes baked into `index.html` and shared styles; no build tooling is required.
 - `README.md`, `test.html`, and `Test2.html` are legacy artifacts and are not part of the active application. Focus on the modules outlined above when working on the project.
+- The refreshed application shell applies a subtle deep-blue gradient backdrop, glassmorphism header, and glowing tab bar accent to give the UI more personality while keeping analytics cards legible on light surfaces. Form inputs also received focus styling to improve usability on touch devices.

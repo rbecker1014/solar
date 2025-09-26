@@ -59,7 +59,11 @@ async function showTab(key){
   container.innerHTML = '';
   const mod = cache.get(key);
   await mod.mount(container, { state, loadData });
-  document.querySelectorAll('nav [data-tab]').forEach(b => b.classList.toggle('tab-active', b.dataset.tab === key));
+  document.querySelectorAll('nav [data-tab]').forEach((button) => {
+    const isActive = button.dataset.tab === key;
+    button.classList.toggle('tab-active', isActive);
+    button.setAttribute('aria-selected', isActive ? 'true' : 'false');
+  });
 }
 window.__showTab = showTab;
 
