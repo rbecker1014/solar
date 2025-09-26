@@ -13,14 +13,15 @@ This repository contains a mobile-first progressive web application (PWA) for tr
 
 - **tabs/date-range.js** – Hosts reusable helpers for rendering the date range picker UI and normalizing the selected start/end dates for BigQuery-style SQL queries.
 - **tabs/cloud-config.js** – Exposes the OAuth client ID, Cloud Storage bucket information, and default BigQuery settings (including the US multi-region location) used anywhere Google Cloud access is required (entry and settings tabs).
+- **tabs/daily-data-store.js** – Centralizes loading of the combined solar/usage daily dataset, caches the results in shared state per date range, and exposes selectors for KPIs, charts, and tables so presentation tabs can stay lean.
 
 ## Tab Modules (`tabs/`)
 
 Each tab mounts into the shared `<main id="view">` element and drives its own UI:
 
-- **kpi.js** – Fetches daily usage and solar totals for the active date range, calculates summary metrics (total usage/solar, grid import/export, self-sufficiency, and average daily values), and renders them as headline KPIs.
-- **charts.js** – Pulls the same combined usage/solar dataset and renders monthly stacked bars plus a sliding 7-day daily view. Includes a manual refresh button, change log, and slider to adjust the daily window.
-- **data.js** – Presents a sortable table of raw combined data (date, solar kWh, home kWh, net, grid import/export) for the selected range. Shows helpful status messages when the range is empty or a backend request fails.
+- **kpi.js** – Reads the cached daily dataset, calculates summary metrics (total usage/solar, grid import/export, self-sufficiency, and average daily values), and renders them as headline KPIs.
+- **charts.js** – Uses the shared daily dataset selectors to render monthly stacked bars plus a sliding 7-day daily view. Includes a manual refresh button, change log, and slider to adjust the daily window.
+- **data.js** – Presents a sortable table of raw combined data (date, solar kWh, home kWh, net, grid import/export) for the selected range using the cached dataset. Shows helpful status messages when the range is empty or a backend request fails.
 - **record.js** – Allows manual entry of production readings. Displays the latest recorded values from Google Apps Script and submits form data back to the same endpoint, logging responses for troubleshooting.
 - **entry.js** – Provides an authenticated workflow for appending rows to a Google Sheet. Handles OAuth sign-in with Google Identity Services, reads the last populated row to calculate interpolation, and appends new rows with validation of production totals.
 - **settings.js** – Configures the SDGE ingestion workflow. After authenticating with Google Cloud scopes it uploads the selected SDGE export file to the configured Cloud Storage bucket, runs a follow-up BigQuery statement, and reports upload/query status back to the user. It also surfaces the “Add to Home Screen” installer whenever the browser exposes the PWA prompt so mobile users can pin the app and run it without browser chrome.

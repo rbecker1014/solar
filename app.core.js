@@ -2,6 +2,7 @@
 // Shared state, auth, Sheets, router, and lazy tab loader
 import './pwa-install.js';
 import { getDefaultDateRange } from './tabs/date-range.js';
+import { ensureDailyDataLoaded } from './tabs/daily-data-store.js';
 import {
   DEFAULT_BIGQUERY_PROJECT,
   DEFAULT_BIGQUERY_LOCATION,
@@ -20,6 +21,15 @@ const state = {
   bigQuerySql: DEFAULT_BIGQUERY_SQL,
   lastLoadedAt: null,
   lastLoadError: null,
+  dailyData: {
+    key: null,
+    range: null,
+    rows: [],
+    status: 'idle',
+    lastFetched: null,
+    error: null,
+    promise: null,
+  },
 };
 
 async function loadData(){
@@ -30,6 +40,7 @@ async function loadData(){
   state.lastLoadError = null;
 
   try {
+    await ensureDailyDataLoaded(state);
     if (privateLoader){
       await privateLoader(state);
     }
@@ -72,6 +83,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.querySelectorAll('nav [data-tab]').forEach(b => {
     b.addEventListener('click', () => showTab(b.dataset.tab));
   });
-   try{ await loadData(); } catch(e){ console.error(e); }
+  try {
+    await loadData();
+  } catch (e) {
+    console.error(e);
+  }
   showTab('kpi');
 });

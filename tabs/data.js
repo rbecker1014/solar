@@ -1,9 +1,7 @@
 // tabs/data.js
 
 import { renderDateRange, getNormalizedDateRange } from './date-range.js';
-
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
-const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
+import { ensureDailyDataLoaded, selectTableRows } from './daily-data-store.js';
 
 let $root = null;
 let rangeListener = null;
@@ -37,7 +35,7 @@ export async function mount(root,ctx) {
     </section>
   `;
 
-   const rangeHost = $root.querySelector('[data-range-host]');
+  const rangeHost = $root.querySelector('[data-range-host]');
   renderDateRange(rangeHost, ctx, {
     id: 'data-range',
     onRangeChange: () => load(ctx),
@@ -76,56 +74,9 @@ async function load(ctx) {
     summary.textContent = `Showing ${from} → ${to}`;
   }
 
-const sql = `
-    WITH combined AS (
-      SELECT
-        SP.date,
-        SP.Production,
-        NULL AS Net,
-        NULL AS GridImport,
-        NULL AS GridExport
-      FROM \`energy.solar_production\` SP
-      WHERE SP.date BETWEEN DATE '${from}' AND DATE '${to}'
-      
-      UNION ALL
-
-      SELECT
-        SDGE.date,
-        NULL AS Production,
-        SUM(net_kwh)         AS Net,
-        SUM(consumption_kwh) AS GridImport,
-        SUM(generation_kwh)  AS GridExport
-      FROM \`energy.sdge_usage\` SDGE
-      WHERE SDGE.date BETWEEN DATE '${from}' AND DATE '${to}'
-      GROUP BY SDGE.date
- )
-    SELECT
-      x.date AS Date,
-      SUM(x.Production)              AS SolarkWh,
-      SUM(x.Production) + SUM(x.Net) AS HomekWh,
-      SUM(x.Net)                     AS NetkWh,
-      SUM(x.GridImport)              AS GridImport,
-      SUM(x.GridExport)              AS GridExport
-    FROM combined x
-    WHERE x.date BETWEEN DATE '${from}' AND DATE '${to}'
-    GROUP BY x.date
-    ORDER BY x.date DESC
-  `;
-
   try {
-    const url = `${ENDPOINT}?token=${encodeURIComponent(TOKEN)}&query=${encodeURIComponent(sql)}`;
-    const res = await fetch(url);
-    const j = await res.json();
-
-    if (!j || j.ok !== true) {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="6" class="p-2 text-red-600">${(j && j.error) || 'Unknown error'}</td>`;
-      tbody.appendChild(tr);
-      console.error('GET data error:', j);
-      return;
-    }
-
-    const rows = Array.isArray(j.rows) ? j.rows : [];
+    await ensureDailyDataLoaded(ctx?.state);
+    const rows = selectTableRows(ctx?.state);
     const frag = document.createDocumentFragment();
 
     if (rows.length === 0) {
@@ -148,7 +99,7 @@ const sql = `
     }
 
     tbody.appendChild(frag);
-    console.log('GET data:', { ok: j.ok, count: rows.length, from, to });
+    console.log('table refresh:', { count: rows.length, from, to });
   } catch (e) {
     const tr = document.createElement('tr');
     tr.innerHTML = `<td colspan="6" class="p-2 text-red-600">Fetch error: ${e.message}</td>`;
