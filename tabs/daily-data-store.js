@@ -120,12 +120,22 @@ export async function ensureDailyDataLoaded(state){
 
 export function selectKpiMetrics(state){
   const rows = state?.dailyData?.rows || [];
+  let topProductionDay = null;
   const totals = rows.reduce((acc, row) => {
     acc.totalSolar += row.solarKWh;
     acc.totalUse += row.homeKWh;
     acc.totalImp += row.gridImport;
     acc.totalExp += row.gridExport;
     acc.dayCount += 1;
+
+    if (!topProductionDay || row.solarKWh > topProductionDay.solarKWh || (row.solarKWh === topProductionDay.solarKWh && row.date > topProductionDay.date)){
+      topProductionDay = {
+        date: row.date,
+        solarKWh: row.solarKWh,
+        homeKWh: row.homeKWh,
+        gridExport: row.gridExport,
+      };
+    }
     return acc;
   }, {
     totalSolar: 0,
@@ -147,6 +157,7 @@ export function selectKpiMetrics(state){
     avgDailyUse,
     avgDailyProd,
     selfSufficiency,
+    topProductionDay,
   };
 }
 
