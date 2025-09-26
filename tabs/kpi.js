@@ -24,6 +24,11 @@ export async function mount(root, ctx){
         <div class="card"><div class="kpi" id="kpiAvgDailyUse">0 kWh</div><div class="kpi-label">Avg Daily Usage</div></div>
         <div class="card"><div class="kpi" id="kpiAvgDailyProd">0 kWh</div><div class="kpi-label">Avg Daily Production</div></div>
       </div>
+      <div class="card">
+        <div class="kpi" id="kpiTopProdValue">0 kWh</div>
+        <div class="kpi-label">Top Production Day</div>
+        <div class="text-xs text-slate-500" id="kpiTopProdDetail">No production data</div>
+      </div>
     </section>
   `;
 
@@ -54,6 +59,12 @@ export async function mount(root, ctx){
 
 function fmtKWh(v){ return `${Number(v || 0).toFixed(0)} kWh`; }
 function fmtPct(v){ return `${(Number(v || 0) * 100).toFixed(0)}%`; }
+function fmtDate(value){
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
+}
 
 async function loadKPIs(ctx){
   try{
@@ -68,6 +79,20 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiSelfSufficiency').textContent = fmtPct(metrics.selfSufficiency);
     $root.querySelector('#kpiAvgDailyUse').textContent     = fmtKWh(metrics.avgDailyUse);
     $root.querySelector('#kpiAvgDailyProd').textContent    = fmtKWh(metrics.avgDailyProd);
+
+    const top = metrics.topProductionDay;
+    const topValueEl = $root.querySelector('#kpiTopProdValue');
+    const topDetailEl = $root.querySelector('#kpiTopProdDetail');
+    if (top?.date){
+      topValueEl.textContent = fmtKWh(top.solarKWh);
+      const bits = [fmtDate(top.date)].filter(Boolean);
+      bits.push(`Usage ${Number(top.homeKWh || 0).toFixed(0)} kWh`);
+      bits.push(`Export ${Number(top.gridExport || 0).toFixed(0)} kWh`);
+      topDetailEl.textContent = bits.join(' · ');
+    }else{
+      topValueEl.textContent = fmtKWh(0);
+      topDetailEl.textContent = 'No production data';
+    }
   }catch(err){
     console.error('kpi error:', err);
     const el = document.createElement('div');
