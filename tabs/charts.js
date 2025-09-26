@@ -1,10 +1,7 @@
 // tabs/charts.js
 
 import { renderDateRange, getNormalizedDateRange } from './date-range.js';
-
-// Use the same endpoint and token as data.js
-const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
-const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
+import { ensureDailyDataLoaded, selectChartSeries } from './daily-data-store.js';
 
 let $root = null;
 let state = { recent: [], monthly: [], dailyWindowStart: 0 };
@@ -91,84 +88,18 @@ function log(m){
   el.textContent += (typeof m === 'string' ? m : JSON.stringify(m)) + "\n";
 }
 
-async function fetchQuery(sql){
-  const url = `${ENDPOINT}?token=${encodeURIComponent(TOKEN)}&query=${encodeURIComponent(sql)}`;
-  const res = await fetch(url);
-  const j = await res.json();
-  if (!j || j.ok !== true) {
-    const msg = (j && j.error) || 'Unknown error';
-    throw new Error(msg);
-  }
-  return Array.isArray(j.rows) ? j.rows : [];
-}
-
 async function load(ctx){
   try {
-      const { from, to } = getNormalizedDateRange(ctx?.state);
-
-    // Build one canonical daily CTE scoped to the active range
-    const baseDailyCTE = `
-      WITH daily AS (
-        SELECT
-          x.date AS Date,
-          COALESCE(SUM(x.Production), 0)              AS SolarkWh,
-          COALESCE(SUM(x.Production) + SUM(x.Net), 0) AS HomeKWh
-        FROM (
-          SELECT
-            SP.date,
-            SP.Production,
-            NULL AS Net
-          FROM \`energy.solar_production\` SP
-          WHERE SP.date BETWEEN DATE '${from}' AND DATE '${to}'
-          
-          UNION ALL
-
-          SELECT
-            SDGE.date,
-            NULL AS Production,
-            SUM(net_kwh) AS Net
-          FROM \`energy.sdge_usage\` SDGE
-          WHERE SDGE.date BETWEEN DATE '${from}' AND DATE '${to}'
-          GROUP BY SDGE.date
-        ) x
-          WHERE x.date BETWEEN DATE '${from}' AND DATE '${to}'
-          GROUP BY x.date
-      )
-    `;
-
-    const sqlDailyRange = `
-      ${baseDailyCTE}
-      SELECT
-        Date AS date,
-        HomeKWh AS usage,
-        SolarkWh AS prod
-      FROM daily
-      ORDER BY Date
-    `;
-
-      const sqlMonthlyRange = `
-      ${baseDailyCTE}
-      SELECT
-        FORMAT_DATE('%Y-%m', Date) AS month,
-        COALESCE(SUM(HomeKWh), 0)  AS usage,
-        COALESCE(SUM(SolarkWh), 0) AS prod
-      FROM daily
-      GROUP BY month
-      ORDER BY month
-    `;
-
-    const [recent, monthly] = await Promise.all([
-      fetchQuery(sqlDailyRange),
-      fetchQuery(sqlMonthlyRange),
-    ]);
-
-    state.recent = recent;
-    state.monthly = monthly;
+    await ensureDailyDataLoaded(ctx?.state);
+    const series = selectChartSeries(ctx?.state);
+    state.recent = series.recent;
+    state.monthly = series.monthly;
     const windowSize = Math.min(7, state.recent.length || 0);
     state.dailyWindowStart = Math.max(0, (state.recent.length || 0) - windowSize);
-   
+
     draw();
-    log('GET charts: ' + JSON.stringify({ recent: recent.length, monthly: monthly.length, from, to }));
+    const { from, to } = getNormalizedDateRange(ctx?.state);
+    log('charts refresh: ' + JSON.stringify({ recent: state.recent.length, monthly: state.monthly.length, from, to }));
   } catch (err) {
     console.error('load error', err);
     log('load error: ' + err.message);
@@ -209,14 +140,14 @@ function drawMonthlyChart(){
         scales: { y: { beginAtZero: true } }
       }
     });
-     return;
+    return;
   }
 
   monthlyChart.data.labels = labels;
   if (monthlyChart.data.datasets?.[0]){
     monthlyChart.data.datasets[0].data = use;
   }
- if (monthlyChart.data.datasets?.[1]){
+  if (monthlyChart.data.datasets?.[1]){
     monthlyChart.data.datasets[1].data = solar;
   }
   monthlyChart.update();
@@ -280,7 +211,7 @@ function drawDailyChart(){
     dailyChart = null;
   }
 
-  if (!dailyChart){ 
+  if (!dailyChart){
     dailyChart = new Chart(ctxDaily, {
       type: 'bar',
       data: {
@@ -296,14 +227,14 @@ function drawDailyChart(){
         scales: { y: { beginAtZero: true } }
       }
     });
-  return;
+    return;
   }
 
   dailyChart.data.labels = labels;
   if (dailyChart.data.datasets?.[0]){
     dailyChart.data.datasets[0].data = use;
   }
-if (dailyChart.data.datasets?.[1]){
+  if (dailyChart.data.datasets?.[1]){
     dailyChart.data.datasets[1].data = solar;
   }
   dailyChart.update();
