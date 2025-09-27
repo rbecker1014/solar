@@ -57,7 +57,33 @@ export async function mount(root, ctx){
   await loadKPIs(ctx);
 }
 
-function fmtKWh(v){ return `${Number(v || 0).toFixed(0)} kWh`; }
+function fmtKWh(value){
+  const num = Number(value || 0);
+  if (!Number.isFinite(num)) return '0 kWh';
+
+  const abs = Math.abs(num);
+  let unit = 'kWh';
+  let divisor = 1;
+  let fractionDigits = 0;
+
+  if (abs >= 1_000_000){
+    unit = 'GWh';
+    divisor = 1_000_000;
+    fractionDigits = 2;
+  }else if (abs >= 1_000){
+    unit = 'MWh';
+    divisor = 1_000;
+    fractionDigits = 2;
+  }
+
+  const scaled = num / divisor;
+  const formatted = scaled.toLocaleString('en-US', {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  });
+
+  return `${formatted} ${unit}`;
+}
 function fmtPct(v){ return `${(Number(v || 0) * 100).toFixed(0)}%`; }
 function fmtDate(value){
   if (!value) return '';
@@ -86,8 +112,8 @@ async function loadKPIs(ctx){
     if (top?.date){
       topValueEl.textContent = fmtKWh(top.solarKWh);
       const bits = [fmtDate(top.date)].filter(Boolean);
-      bits.push(`Usage ${Number(top.homeKWh || 0).toFixed(0)} kWh`);
-      bits.push(`Export ${Number(top.gridExport || 0).toFixed(0)} kWh`);
+      bits.push(`Usage ${fmtKWh(top.homeKWh)}`);
+      bits.push(`Export ${fmtKWh(top.gridExport)}`);
       topDetailEl.textContent = bits.join(' · ');
     }else{
       topValueEl.textContent = fmtKWh(0);
