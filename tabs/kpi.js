@@ -13,7 +13,7 @@ export async function mount(root, ctx){
   $root.innerHTML = `
     <section class="space-y-3" data-kpi-root>
       <div data-range-host></div>
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-3">
         <div class="card">
           <div class="kpi" id="kpiWeekToDate">0 kWh</div>
           <div class="kpi-label">WTD Solar</div>
