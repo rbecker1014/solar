@@ -104,10 +104,24 @@ function fmtDate(value){
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
+function formatDeltaPercent(delta = 0, previous = 0){
+  const prevNum = Number(previous);
+  if (!Number.isFinite(prevNum) || Math.abs(prevNum) < Number.EPSILON){
+    return 'n/a';
+  }
+  const pct = (Number(delta) / prevNum) * 100;
+  if (!Number.isFinite(pct)){
+    return 'n/a';
+  }
+  const sign = pct >= 0 ? '+' : '';
+  return `${sign}${pct.toFixed(0)}%`;
+}
+
 function formatDeltaDetail({ delta = 0, previous = 0 }, label){
   const magnitude = fmtKWh(Math.abs(delta));
   const signed = delta >= 0 ? `+${magnitude}` : `-${magnitude}`;
-  return `${signed} vs ${label} (${fmtKWh(previous)})`;
+  const pct = formatDeltaPercent(delta, previous);
+  return `${signed} (${pct}) vs ${label} (${fmtKWh(previous)})`;
 }
 
 async function loadKPIs(ctx){
