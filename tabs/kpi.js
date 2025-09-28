@@ -13,6 +13,18 @@ export async function mount(root, ctx){
   $root.innerHTML = `
     <section class="space-y-3" data-kpi-root>
       <div data-range-host></div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="card">
+          <div class="kpi" id="kpiWeekToDate">0 kWh</div>
+          <div class="kpi-label">Week to Date Production</div>
+          <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs same period last week</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiMonthToDate">0 kWh</div>
+          <div class="kpi-label">Month to Date Production</div>
+          <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs same period last month</div>
+        </div>
+      </div>
       <div class="grid grid-cols-2 gap-3">
         <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
         <div class="card"><div class="kpi" id="kpiSolar">0 kWh</div><div class="kpi-label">Total Solar</div></div>
@@ -92,12 +104,20 @@ function fmtDate(value){
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
+function formatDeltaDetail({ delta = 0, previous = 0 }, label){
+  const magnitude = fmtKWh(Math.abs(delta));
+  const signed = delta >= 0 ? `+${magnitude}` : `-${magnitude}`;
+  return `${signed} vs ${label} (${fmtKWh(previous)})`;
+}
+
 async function loadKPIs(ctx){
   try{
     await ensureDailyDataLoaded(ctx?.state);
     const metrics = selectKpiMetrics(ctx?.state);
 
     // Paint
+    $root.querySelector('#kpiWeekToDate').textContent     = fmtKWh(metrics.weekToDate.value);
+    $root.querySelector('#kpiMonthToDate').textContent    = fmtKWh(metrics.monthToDate.value);
     $root.querySelector('#kpiUsage').textContent           = fmtKWh(metrics.totalUse);
     $root.querySelector('#kpiSolar').textContent           = fmtKWh(metrics.totalSolar);
     $root.querySelector('#kpiImport').textContent          = fmtKWh(metrics.totalImp);
@@ -105,6 +125,8 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiSelfSufficiency').textContent = fmtPct(metrics.selfSufficiency);
     $root.querySelector('#kpiAvgDailyUse').textContent     = fmtKWh(metrics.avgDailyUse);
     $root.querySelector('#kpiAvgDailyProd').textContent    = fmtKWh(metrics.avgDailyProd);
+    $root.querySelector('#kpiWeekToDateDetail').textContent  = formatDeltaDetail(metrics.weekToDate, 'same period last week');
+    $root.querySelector('#kpiMonthToDateDetail').textContent = formatDeltaDetail(metrics.monthToDate, 'same period last month');
 
     const top = metrics.topProductionDay;
     const topValueEl = $root.querySelector('#kpiTopProdValue');
