@@ -13,11 +13,16 @@ export async function mount(root, ctx){
   $root.innerHTML = `
     <section class="space-y-3" data-kpi-root>
       <div data-range-host></div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
         <div class="card">
           <div class="kpi" id="kpiWeekToDate">0 kWh</div>
           <div class="kpi-label">WTD Solar</div>
           <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs Pr</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiPrevWeekChange">0%</div>
+          <div class="kpi-label">PWTD Change</div>
+          <div class="text-xs text-slate-500" id="kpiPrevWeekTotal">PWTD 0 kWh</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiMonthToDate">0 kWh</div>
@@ -134,6 +139,8 @@ async function loadKPIs(ctx){
     // Paint
     $root.querySelector('#kpiWeekToDate').textContent     = fmtKWh(metrics.weekToDate.value);
     $root.querySelector('#kpiMonthToDate').textContent    = fmtKWh(metrics.monthToDate.value);
+    $root.querySelector('#kpiPrevWeekChange').textContent = formatDeltaPercent(metrics.weekToDate.delta, metrics.weekToDate.previous);
+    $root.querySelector('#kpiPrevWeekTotal').textContent  = `PWTD ${fmtKWh(metrics.weekToDate.previous)}`;
     $root.querySelector('#kpiUsage').textContent           = fmtKWh(metrics.totalUse);
     $root.querySelector('#kpiSolar').textContent           = fmtKWh(metrics.totalSolar);
     $root.querySelector('#kpiImport').textContent          = fmtKWh(metrics.totalImp);
