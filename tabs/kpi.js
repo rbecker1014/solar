@@ -16,12 +16,12 @@ export async function mount(root, ctx){
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div class="card">
           <div class="kpi" id="kpiWeekToDate">0 kWh</div>
-          <div class="kpi-label">Week to Date Production</div>
+          <div class="kpi-label">WTD Solar</div>
           <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs same period last week</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiMonthToDate">0 kWh</div>
-          <div class="kpi-label">Month to Date Production</div>
+          <div class="kpi-label">MTD Solar</div>
           <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs same period last month</div>
         </div>
       </div>
