@@ -120,8 +120,12 @@ export async function ensureDailyDataLoaded(state){
 
 export function selectKpiMetrics(state){
   const rows = state?.dailyData?.rows || [];
+  const parsedRows = rows.map((row) => ({
+    ...row,
+    dateObj: row?.date ? new Date(`${row.date}T00:00:00`) : null,
+  }));
   let topProductionDay = null;
-  const totals = rows.reduce((acc, row) => {
+  const totals = parsedRows.reduce((acc, row) => {
     acc.totalSolar += row.solarKWh;
     acc.totalUse += row.homeKWh;
     acc.totalImp += row.gridImport;
@@ -149,6 +153,64 @@ export function selectKpiMetrics(state){
   const avgDailyProd = totals.dayCount > 0 ? totals.totalSolar / totals.dayCount : 0;
   const selfSufficiency = totals.totalUse > 0 ? totals.totalSolar / totals.totalUse : 0;
 
+  function sumProductionBetween(startDate, endDate){
+    if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
+    const startTime = startDate.getTime();
+    const endTime = endDate.getTime();
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return 0;
+    return parsedRows.reduce((sum, row) => {
+      const rowTime = row.dateObj?.getTime();
+      if (!Number.isFinite(rowTime)) return sum;
+      return (rowTime >= startTime && rowTime <= endTime)
+        ? sum + row.solarKWh
+        : sum;
+    }, 0);
+  }
+
+  let weekToDate = { value: 0, previous: 0, delta: 0 };
+  let monthToDate = { value: 0, previous: 0, delta: 0 };
+
+  const latestRow = parsedRows.reduce((latest, row) => {
+    if (!row.dateObj) return latest;
+    if (!latest || row.dateObj > latest.dateObj) return row;
+    return latest;
+  }, null);
+
+  if (latestRow?.dateObj){
+    const currentDate = latestRow.dateObj;
+
+    const currentWeekday = currentDate.getDay();
+    const comparableWeekDays = currentWeekday + 1;
+    const startOfWeek = new Date(currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentWeekday);
+    const currentWeekTotal = sumProductionBetween(startOfWeek, currentDate);
+    const prevWeekStart = new Date(startOfWeek);
+    prevWeekStart.setDate(startOfWeek.getDate() - 7);
+    const prevWeekEnd = new Date(prevWeekStart);
+    prevWeekEnd.setDate(prevWeekStart.getDate() + (comparableWeekDays - 1));
+    const prevWeekTotal = sumProductionBetween(prevWeekStart, prevWeekEnd);
+    weekToDate = {
+      value: currentWeekTotal,
+      previous: prevWeekTotal,
+      delta: currentWeekTotal - prevWeekTotal,
+    };
+
+    const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const monthToDateDays = currentDate.getDate();
+    const currentMonthTotal = sumProductionBetween(startOfMonth, currentDate);
+    const prevMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
+    const prevMonthDays = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth() + 1, 0).getDate();
+    const comparableMonthDays = Math.min(monthToDateDays, prevMonthDays);
+    const prevMonthEnd = new Date(prevMonthStart);
+    prevMonthEnd.setDate(prevMonthStart.getDate() + (comparableMonthDays - 1));
+    const prevMonthTotal = sumProductionBetween(prevMonthStart, prevMonthEnd);
+    monthToDate = {
+      value: currentMonthTotal,
+      previous: prevMonthTotal,
+      delta: currentMonthTotal - prevMonthTotal,
+    };
+  }
+
   return {
     totalSolar: totals.totalSolar,
     totalUse: totals.totalUse,
@@ -158,6 +220,8 @@ export function selectKpiMetrics(state){
     avgDailyProd,
     selfSufficiency,
     topProductionDay,
+    weekToDate,
+    monthToDate,
   };
 }
 
