@@ -35,6 +35,7 @@ export async function mount(root, ctx){
           <div class="text-xs text-slate-500" id="kpiPrevMonthTotal">PMTD 0 kWh</div>
         </div>
       </div>
+      <hr class="my-2 border-t border-slate-200 dark:border-slate-700" />
       <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
         <div class="card"><div class="kpi" id="kpiYtdSolar">0 kWh</div><div class="kpi-label">YTD Solar</div></div>
         <div class="card">
