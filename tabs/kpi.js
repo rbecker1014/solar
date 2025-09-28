@@ -118,10 +118,11 @@ function formatDeltaPercent(delta = 0, previous = 0){
 }
 
 function formatDeltaDetail({ delta = 0, previous = 0 }, label){
-  const magnitude = fmtKWh(Math.abs(delta));
-  const signed = delta >= 0 ? `+${magnitude}` : `-${magnitude}`;
   const pct = formatDeltaPercent(delta, previous);
-  return `${signed} (${pct}) vs ${label} (${fmtKWh(previous)})`;
+  if (pct === 'n/a'){
+    return `n/a vs ${label} (${fmtKWh(previous)})`;
+  }
+  return `${pct} vs ${label} (${fmtKWh(previous)})`;
 }
 
 async function loadKPIs(ctx){
