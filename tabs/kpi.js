@@ -1,7 +1,7 @@
 // tabs/kpi.js
 
 import { renderDateRange } from './date-range.js';
-import { ensureDailyDataLoaded, selectKpiMetrics } from './daily-data-store.js';
+import { ensureDailyDataLoaded, ensureFullDailyDataLoaded, selectKpiMetrics } from './daily-data-store.js';
 
 let $root = null;
 let rangeListener = null;
@@ -13,11 +13,11 @@ export async function mount(root, ctx){
   $root.innerHTML = `
     <section class="space-y-3" data-kpi-root>
       <div data-range-host></div>
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-3">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
         <div class="card">
           <div class="kpi" id="kpiWeekToDate">0 kWh</div>
           <div class="kpi-label">WTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs Pr</div>
+          <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs PWTD</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiPrevWeekChange">0%</div>
@@ -27,12 +27,22 @@ export async function mount(root, ctx){
         <div class="card">
           <div class="kpi" id="kpiMonthToDate">0 kWh</div>
           <div class="kpi-label">MTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs Pr</div>
+          <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs PMTD</div>
+        </div>
+        <div class="card">
+          <div class="kpi" id="kpiPrevMonthChange">0%</div>
+          <div class="kpi-label">PMTD Change</div>
+          <div class="text-xs text-slate-500" id="kpiPrevMonthTotal">PMTD 0 kWh</div>
         </div>
       </div>
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
+        <div class="card"><div class="kpi" id="kpiYtdSolar">0 kWh</div><div class="kpi-label">YTD Solar</div></div>
+        <div class="card">
+          <div class="kpi" id="kpiPrevYearChange">0%</div>
+          <div class="kpi-label">PYTD Change</div>
+          <div class="text-xs text-slate-500" id="kpiPrevYearTotal">PYTD 0 kWh</div>
+        </div>
         <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
-        <div class="card"><div class="kpi" id="kpiSolar">0 kWh</div><div class="kpi-label">Total Solar</div></div>
         <div class="card"><div class="kpi" id="kpiImport">0 kWh</div><div class="kpi-label">Grid Import</div></div>
         <div class="card"><div class="kpi" id="kpiExport">0 kWh</div><div class="kpi-label">Grid Export</div></div>
       </div>
@@ -133,23 +143,30 @@ function formatDeltaDetail({ delta = 0, previous = 0 }, label){
 
 async function loadKPIs(ctx){
   try{
-    await ensureDailyDataLoaded(ctx?.state);
+    await Promise.all([
+      ensureDailyDataLoaded(ctx?.state),
+      ensureFullDailyDataLoaded(ctx?.state),
+    ]);
     const metrics = selectKpiMetrics(ctx?.state);
 
     // Paint
-    $root.querySelector('#kpiWeekToDate').textContent     = fmtKWh(metrics.weekToDate.value);
-    $root.querySelector('#kpiMonthToDate').textContent    = fmtKWh(metrics.monthToDate.value);
-    $root.querySelector('#kpiPrevWeekChange').textContent = formatDeltaPercent(metrics.weekToDate.delta, metrics.weekToDate.previous);
-    $root.querySelector('#kpiPrevWeekTotal').textContent  = `PWTD ${fmtKWh(metrics.weekToDate.previous)}`;
-    $root.querySelector('#kpiUsage').textContent           = fmtKWh(metrics.totalUse);
-    $root.querySelector('#kpiSolar').textContent           = fmtKWh(metrics.totalSolar);
-    $root.querySelector('#kpiImport').textContent          = fmtKWh(metrics.totalImp);
-    $root.querySelector('#kpiExport').textContent          = fmtKWh(metrics.totalExp);
-    $root.querySelector('#kpiSelfSufficiency').textContent = fmtPct(metrics.selfSufficiency);
-    $root.querySelector('#kpiAvgDailyUse').textContent     = fmtKWh(metrics.avgDailyUse);
-    $root.querySelector('#kpiAvgDailyProd').textContent    = fmtKWh(metrics.avgDailyProd);
-    $root.querySelector('#kpiWeekToDateDetail').textContent  = formatDeltaDetail(metrics.weekToDate, 'Pr');
-    $root.querySelector('#kpiMonthToDateDetail').textContent = formatDeltaDetail(metrics.monthToDate, 'Pr');
+    $root.querySelector('#kpiWeekToDate').textContent      = fmtKWh(metrics.weekToDate.value);
+    $root.querySelector('#kpiMonthToDate').textContent     = fmtKWh(metrics.monthToDate.value);
+    $root.querySelector('#kpiPrevWeekChange').textContent  = formatDeltaPercent(metrics.weekToDate.delta, metrics.weekToDate.previous);
+    $root.querySelector('#kpiPrevWeekTotal').textContent   = `PWTD ${fmtKWh(metrics.weekToDate.previous)}`;
+    $root.querySelector('#kpiPrevMonthChange').textContent = formatDeltaPercent(metrics.monthToDate.delta, metrics.monthToDate.previous);
+    $root.querySelector('#kpiPrevMonthTotal').textContent  = `PMTD ${fmtKWh(metrics.monthToDate.previous)}`;
+    $root.querySelector('#kpiUsage').textContent            = fmtKWh(metrics.totalUse);
+    $root.querySelector('#kpiYtdSolar').textContent         = fmtKWh(metrics.yearToDate.value);
+    $root.querySelector('#kpiPrevYearChange').textContent   = formatDeltaPercent(metrics.yearToDate.delta, metrics.yearToDate.previous);
+    $root.querySelector('#kpiPrevYearTotal').textContent    = `PYTD ${fmtKWh(metrics.yearToDate.previous)}`;
+    $root.querySelector('#kpiImport').textContent           = fmtKWh(metrics.totalImp);
+    $root.querySelector('#kpiExport').textContent           = fmtKWh(metrics.totalExp);
+    $root.querySelector('#kpiSelfSufficiency').textContent  = fmtPct(metrics.selfSufficiency);
+    $root.querySelector('#kpiAvgDailyUse').textContent      = fmtKWh(metrics.avgDailyUse);
+    $root.querySelector('#kpiAvgDailyProd').textContent     = fmtKWh(metrics.avgDailyProd);
+    $root.querySelector('#kpiWeekToDateDetail').textContent   = formatDeltaDetail(metrics.weekToDate, 'PWTD');
+    $root.querySelector('#kpiMonthToDateDetail').textContent  = formatDeltaDetail(metrics.monthToDate, 'PMTD');
 
     const top = metrics.topProductionDay;
     const topValueEl = $root.querySelector('#kpiTopProdValue');
