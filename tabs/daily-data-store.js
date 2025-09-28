@@ -1,6 +1,6 @@
 // tabs/daily-data-store.js
 // Shared loader and selectors for the combined daily dataset
-import { getNormalizedDateRange } from './date-range.js';
+import { getDefaultDateRange, getNormalizedDateRange } from './date-range.js';
 
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
 const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
@@ -79,6 +79,21 @@ function getStore(state){
   return state.dailyData;
 }
 
+function getFullStore(state){
+  if (!state.dailyDataFull){
+    state.dailyDataFull = {
+      key: null,
+      range: null,
+      rows: [],
+      status: 'idle',
+      lastFetched: null,
+      error: null,
+      promise: null,
+    };
+  }
+  return state.dailyDataFull;
+}
+
 export async function ensureDailyDataLoaded(state){
   if (!state){
     throw new Error('Shared state is required to load daily data.');
@@ -118,9 +133,54 @@ export async function ensureDailyDataLoaded(state){
   return promise;
 }
 
+export async function ensureFullDailyDataLoaded(state){
+  if (!state){
+    throw new Error('Shared state is required to load daily data.');
+  }
+
+  const range = getDefaultDateRange();
+  const key = buildRangeKey(range);
+  const store = getFullStore(state);
+
+  if (store.key === key){
+    if (store.status === 'ready'){ return store.rows; }
+    if (store.status === 'loading' && store.promise){ return store.promise; }
+  }
+
+  store.key = key;
+  store.range = range;
+  store.rows = [];
+  store.status = 'loading';
+  store.error = null;
+
+  const promise = fetchCombinedDaily(range)
+    .then((rows) => {
+      store.rows = rows;
+      store.status = 'ready';
+      store.lastFetched = new Date().toISOString();
+      return rows;
+    })
+    .catch((err) => {
+      store.status = 'error';
+      store.error = err;
+      throw err;
+    })
+    .finally(() => {
+      store.promise = null;
+    });
+
+  store.promise = promise;
+  return promise;
+}
+
 export function selectKpiMetrics(state){
-  const rows = state?.dailyData?.rows || [];
-  const parsedRows = rows.map((row) => ({
+  const filteredRows = state?.dailyData?.rows || [];
+  const parsedRows = filteredRows.map((row) => ({
+    ...row,
+    dateObj: row?.date ? new Date(`${row.date}T00:00:00`) : null,
+  }));
+  const allRows = state?.dailyDataFull?.rows || filteredRows;
+  const parsedAllRows = allRows.map((row) => ({
     ...row,
     dateObj: row?.date ? new Date(`${row.date}T00:00:00`) : null,
   }));
@@ -153,12 +213,12 @@ export function selectKpiMetrics(state){
   const avgDailyProd = totals.dayCount > 0 ? totals.totalSolar / totals.dayCount : 0;
   const selfSufficiency = totals.totalUse > 0 ? totals.totalSolar / totals.totalUse : 0;
 
-  function sumProductionBetween(startDate, endDate){
+  function sumProductionBetween(rows, startDate, endDate){
     if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
     const startTime = startDate.getTime();
     const endTime = endDate.getTime();
     if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return 0;
-    return parsedRows.reduce((sum, row) => {
+    return rows.reduce((sum, row) => {
       const rowTime = row.dateObj?.getTime();
       if (!Number.isFinite(rowTime)) return sum;
       return (rowTime >= startTime && rowTime <= endTime)
@@ -169,8 +229,9 @@ export function selectKpiMetrics(state){
 
   let weekToDate = { value: 0, previous: 0, delta: 0 };
   let monthToDate = { value: 0, previous: 0, delta: 0 };
+  let yearToDate = { value: 0, previous: 0, delta: 0 };
 
-  const latestRow = parsedRows.reduce((latest, row) => {
+  const latestRow = parsedAllRows.reduce((latest, row) => {
     if (!row.dateObj) return latest;
     if (!latest || row.dateObj > latest.dateObj) return row;
     return latest;
@@ -183,12 +244,12 @@ export function selectKpiMetrics(state){
     const comparableWeekDays = currentWeekday + 1;
     const startOfWeek = new Date(currentDate);
     startOfWeek.setDate(currentDate.getDate() - currentWeekday);
-    const currentWeekTotal = sumProductionBetween(startOfWeek, currentDate);
+    const currentWeekTotal = sumProductionBetween(parsedAllRows, startOfWeek, currentDate);
     const prevWeekStart = new Date(startOfWeek);
     prevWeekStart.setDate(startOfWeek.getDate() - 7);
     const prevWeekEnd = new Date(prevWeekStart);
     prevWeekEnd.setDate(prevWeekStart.getDate() + (comparableWeekDays - 1));
-    const prevWeekTotal = sumProductionBetween(prevWeekStart, prevWeekEnd);
+    const prevWeekTotal = sumProductionBetween(parsedAllRows, prevWeekStart, prevWeekEnd);
     weekToDate = {
       value: currentWeekTotal,
       previous: prevWeekTotal,
@@ -197,17 +258,30 @@ export function selectKpiMetrics(state){
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const monthToDateDays = currentDate.getDate();
-    const currentMonthTotal = sumProductionBetween(startOfMonth, currentDate);
+    const currentMonthTotal = sumProductionBetween(parsedAllRows, startOfMonth, currentDate);
     const prevMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     const prevMonthDays = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth() + 1, 0).getDate();
     const comparableMonthDays = Math.min(monthToDateDays, prevMonthDays);
     const prevMonthEnd = new Date(prevMonthStart);
     prevMonthEnd.setDate(prevMonthStart.getDate() + (comparableMonthDays - 1));
-    const prevMonthTotal = sumProductionBetween(prevMonthStart, prevMonthEnd);
+    const prevMonthTotal = sumProductionBetween(parsedAllRows, prevMonthStart, prevMonthEnd);
     monthToDate = {
       value: currentMonthTotal,
       previous: prevMonthTotal,
       delta: currentMonthTotal - prevMonthTotal,
+    };
+
+    const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
+    const ytdDays = Math.max(1, Math.round((currentDate - startOfYear) / 86400000) + 1);
+    const currentYearTotal = sumProductionBetween(parsedAllRows, startOfYear, currentDate);
+    const prevYearStart = new Date(currentDate.getFullYear() - 1, 0, 1);
+    const prevYearEnd = new Date(prevYearStart);
+    prevYearEnd.setDate(prevYearStart.getDate() + (ytdDays - 1));
+    const prevYearTotal = sumProductionBetween(parsedAllRows, prevYearStart, prevYearEnd);
+    yearToDate = {
+      value: currentYearTotal,
+      previous: prevYearTotal,
+      delta: currentYearTotal - prevYearTotal,
     };
   }
 
@@ -222,6 +296,7 @@ export function selectKpiMetrics(state){
     topProductionDay,
     weekToDate,
     monthToDate,
+    yearToDate,
   };
 }
 
