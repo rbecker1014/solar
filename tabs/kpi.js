@@ -17,12 +17,12 @@ export async function mount(root, ctx){
         <div class="card">
           <div class="kpi" id="kpiWeekToDate">0 kWh</div>
           <div class="kpi-label">WTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs PWTD</div>
+          <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs Pr</div>
         </div>
         <div class="card">
           <div class="kpi" id="kpiMonthToDate">0 kWh</div>
           <div class="kpi-label">MTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs PMTD</div>
+          <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs Pr</div>
         </div>
       </div>
       <div class="grid grid-cols-2 gap-3">
@@ -119,10 +119,11 @@ function formatDeltaPercent(delta = 0, previous = 0){
 
 function formatDeltaDetail({ delta = 0, previous = 0 }, label){
   const pct = formatDeltaPercent(delta, previous);
+  const formattedPrevious = fmtKWh(previous);
   if (pct === 'n/a'){
-    return `n/a vs ${label} (${fmtKWh(previous)})`;
+    return `n/a vs ${label} ${formattedPrevious}`;
   }
-  return `${pct} vs ${label} (${fmtKWh(previous)})`;
+  return `${pct} vs ${label} ${formattedPrevious}`;
 }
 
 async function loadKPIs(ctx){
@@ -140,8 +141,8 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiSelfSufficiency').textContent = fmtPct(metrics.selfSufficiency);
     $root.querySelector('#kpiAvgDailyUse').textContent     = fmtKWh(metrics.avgDailyUse);
     $root.querySelector('#kpiAvgDailyProd').textContent    = fmtKWh(metrics.avgDailyProd);
-    $root.querySelector('#kpiWeekToDateDetail').textContent  = formatDeltaDetail(metrics.weekToDate, 'PWTD');
-    $root.querySelector('#kpiMonthToDateDetail').textContent = formatDeltaDetail(metrics.monthToDate, 'PMTD');
+    $root.querySelector('#kpiWeekToDateDetail').textContent  = formatDeltaDetail(metrics.weekToDate, 'Pr');
+    $root.querySelector('#kpiMonthToDateDetail').textContent = formatDeltaDetail(metrics.monthToDate, 'Pr');
 
     const top = metrics.topProductionDay;
     const topValueEl = $root.querySelector('#kpiTopProdValue');
