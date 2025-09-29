@@ -11,7 +11,7 @@ This repository contains a mobile-first progressive web application (PWA) for tr
 
 ## Shared Utilities
 
-- **tabs/date-range.js** – Hosts reusable helpers for rendering the date range picker UI and normalizing the selected start/end dates for BigQuery-style SQL queries.
+- **tabs/date-range.js** – Hosts reusable helpers for rendering the date range picker UI and normalizing the selected start/end dates for BigQuery-style SQL queries. The default range now begins on 2024-01-01 so the KPI tab can calculate both the current and prior year-to-date aggregates without triggering a second network round-trip.
 - **tabs/cloud-config.js** – Exposes the OAuth client ID, Cloud Storage bucket information, and default BigQuery settings (including the US multi-region location) used anywhere Google Cloud access is required (entry and settings tabs).
 - **tabs/daily-data-store.js** – Centralizes loading of the combined solar/usage daily dataset, caches the results in shared state per date range, and exposes selectors for KPIs, charts, and tables so presentation tabs can stay lean.
 

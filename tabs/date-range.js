@@ -1,6 +1,13 @@
 const DAY_MS = 86400000;
 export const DEFAULT_WINDOW_DAYS = 30;
-const INITIAL_START_DATE = '2025-06-01';
+// Default to the beginning of the prior year so that KPIs such as
+// year-to-date (YTD) and prior year-to-date (PYTD) have the full
+// historical window they need to render meaningful comparisons.
+// Without this wider aperture the KPI tab only had access to data
+// from mid-2025 onward, which caused the YTD tile to under-report
+// production and left the PYTD change card with "n/a".  Loading the
+// full trailing 21 months gives both metrics the correct totals.
+const INITIAL_START_DATE = '2024-01-01';
 
 function getToday(){
   const today = new Date();
