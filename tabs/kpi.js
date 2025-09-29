@@ -24,6 +24,7 @@ export async function mount(root, ctx){
           <div class="kpi-label">PWTD Change</div>
           <div class="text-xs text-slate-500" id="kpiPrevWeekTotal">PWTD 0 kWh</div>
         </div>
+        <div class="hidden md:block md:col-span-4" aria-hidden="true"></div>
         <div class="card">
           <div class="kpi" id="kpiMonthToDate">0 kWh</div>
           <div class="kpi-label">MTD Solar</div>
@@ -43,6 +44,7 @@ export async function mount(root, ctx){
           <div class="kpi-label">PYTD Change</div>
           <div class="text-xs text-slate-500" id="kpiPrevYearTotal">PYTD 0 kWh</div>
         </div>
+        <div class="hidden md:block md:col-span-4 lg:col-span-5" aria-hidden="true"></div>
         <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
         <div class="card"><div class="kpi" id="kpiImport">0 kWh</div><div class="kpi-label">Grid Import</div></div>
         <div class="card"><div class="kpi" id="kpiExport">0 kWh</div><div class="kpi-label">Grid Export</div></div>
