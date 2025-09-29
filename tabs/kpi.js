@@ -11,57 +11,81 @@ export async function mount(root, ctx){
 
   // Layout: removed Self Consumption, added Avg Daily Production
   $root.innerHTML = `
-    <section class="space-y-3" data-kpi-root>
+    <section class="space-y-6" data-kpi-root>
       <div data-range-host></div>
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
-        <div class="card">
-          <div class="kpi" id="kpiWeekToDate">0 kWh</div>
-          <div class="kpi-label">WTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs PWTD</div>
+
+      <section class="space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Week To Date</h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div class="card">
+            <div class="kpi" id="kpiWeekToDate">0 kWh</div>
+            <div class="kpi-label">WTD Solar</div>
+            <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs PWTD</div>
+          </div>
+          <div class="card">
+            <div class="kpi" id="kpiPrevWeekChange">0%</div>
+            <div class="kpi-label">PWTD Change</div>
+            <div class="text-xs text-slate-500" id="kpiPrevWeekTotal">PWTD 0 kWh</div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-t border-slate-200 dark:border-slate-700" />
+
+      <section class="space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Month To Date</h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div class="card">
+            <div class="kpi" id="kpiMonthToDate">0 kWh</div>
+            <div class="kpi-label">MTD Solar</div>
+            <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs PMTD</div>
+          </div>
+          <div class="card">
+            <div class="kpi" id="kpiPrevMonthChange">0%</div>
+            <div class="kpi-label">PMTD Change</div>
+            <div class="text-xs text-slate-500" id="kpiPrevMonthTotal">PMTD 0 kWh</div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-t border-slate-200 dark:border-slate-700" />
+
+      <section class="space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Year To Date</h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div class="card">
+            <div class="kpi" id="kpiYtdSolar">0 kWh</div>
+            <div class="kpi-label">YTD Solar</div>
+            <div class="text-xs text-slate-500" id="kpiYearToDateDetail">vs PYTD</div>
+          </div>
+          <div class="card">
+            <div class="kpi" id="kpiPrevYearChange">0%</div>
+            <div class="kpi-label">PYTD Change</div>
+            <div class="text-xs text-slate-500" id="kpiPrevYearTotal">PYTD 0 kWh</div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-t border-slate-200 dark:border-slate-700" />
+
+      <section class="space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">All Other</h2>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
+          <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
+          <div class="card"><div class="kpi" id="kpiImport">0 kWh</div><div class="kpi-label">Grid Import</div></div>
+          <div class="card"><div class="kpi" id="kpiExport">0 kWh</div><div class="kpi-label">Grid Export</div></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div class="card"><div class="kpi" id="kpiSelfSufficiency">0%</div><div class="kpi-label">Self Sufficiency</div></div>
+          <div class="card"><div class="kpi" id="kpiAvgDailyUse">0 kWh</div><div class="kpi-label">Avg Daily Usage</div></div>
+          <div class="card"><div class="kpi" id="kpiAvgDailyProd">0 kWh</div><div class="kpi-label">Avg Daily Production</div></div>
         </div>
         <div class="card">
-          <div class="kpi" id="kpiPrevWeekChange">0%</div>
-          <div class="kpi-label">PWTD Change</div>
-          <div class="text-xs text-slate-500" id="kpiPrevWeekTotal">PWTD 0 kWh</div>
+          <div class="kpi" id="kpiTopProdValue">0 kWh</div>
+          <div class="kpi-label">Top Production Day</div>
+          <div class="text-xs text-slate-500" id="kpiTopProdDetail">No production data</div>
         </div>
-        <div class="hidden md:block md:col-span-4" aria-hidden="true"></div>
-        <div class="card">
-          <div class="kpi" id="kpiMonthToDate">0 kWh</div>
-          <div class="kpi-label">MTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiMonthToDateDetail">vs PMTD</div>
-        </div>
-        <div class="card">
-          <div class="kpi" id="kpiPrevMonthChange">0%</div>
-          <div class="kpi-label">PMTD Change</div>
-          <div class="text-xs text-slate-500" id="kpiPrevMonthTotal">PMTD 0 kWh</div>
-        </div>
-        <div class="card">
-          <div class="kpi" id="kpiYtdSolar">0 kWh</div>
-          <div class="kpi-label">YTD Solar</div>
-          <div class="text-xs text-slate-500" id="kpiYearToDateDetail">vs PYTD</div>
-        </div>
-        <div class="card">
-          <div class="kpi" id="kpiPrevYearChange">0%</div>
-          <div class="kpi-label">PYTD Change</div>
-          <div class="text-xs text-slate-500" id="kpiPrevYearTotal">PYTD 0 kWh</div>
-        </div>
-      </div>
-      <hr class="my-2 border-t border-slate-200 dark:border-slate-700" />
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-        <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
-        <div class="card"><div class="kpi" id="kpiImport">0 kWh</div><div class="kpi-label">Grid Import</div></div>
-        <div class="card"><div class="kpi" id="kpiExport">0 kWh</div><div class="kpi-label">Grid Export</div></div>
-      </div>
-      <div class="grid grid-cols-2 gap-3">
-        <div class="card"><div class="kpi" id="kpiSelfSufficiency">0%</div><div class="kpi-label">Self Sufficiency</div></div>
-        <div class="card"><div class="kpi" id="kpiAvgDailyUse">0 kWh</div><div class="kpi-label">Avg Daily Usage</div></div>
-        <div class="card"><div class="kpi" id="kpiAvgDailyProd">0 kWh</div><div class="kpi-label">Avg Daily Production</div></div>
-      </div>
-      <div class="card">
-        <div class="kpi" id="kpiTopProdValue">0 kWh</div>
-        <div class="kpi-label">Top Production Day</div>
-        <div class="text-xs text-slate-500" id="kpiTopProdDetail">No production data</div>
-      </div>
+      </section>
     </section>
   `;
 
