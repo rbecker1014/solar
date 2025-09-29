@@ -35,16 +35,19 @@ export async function mount(root, ctx){
           <div class="kpi-label">PMTD Change</div>
           <div class="text-xs text-slate-500" id="kpiPrevMonthTotal">PMTD 0 kWh</div>
         </div>
-      </div>
-      <hr class="my-2 border-t border-slate-200 dark:border-slate-700" />
-      <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-        <div class="card"><div class="kpi" id="kpiYtdSolar">0 kWh</div><div class="kpi-label">YTD Solar</div></div>
+        <div class="card">
+          <div class="kpi" id="kpiYtdSolar">0 kWh</div>
+          <div class="kpi-label">YTD Solar</div>
+          <div class="text-xs text-slate-500" id="kpiYearToDateDetail">vs PYTD</div>
+        </div>
         <div class="card">
           <div class="kpi" id="kpiPrevYearChange">0%</div>
           <div class="kpi-label">PYTD Change</div>
           <div class="text-xs text-slate-500" id="kpiPrevYearTotal">PYTD 0 kWh</div>
         </div>
-        <div class="hidden md:block md:col-span-4 lg:col-span-5" aria-hidden="true"></div>
+      </div>
+      <hr class="my-2 border-t border-slate-200 dark:border-slate-700" />
+      <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
         <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
         <div class="card"><div class="kpi" id="kpiImport">0 kWh</div><div class="kpi-label">Grid Import</div></div>
         <div class="card"><div class="kpi" id="kpiExport">0 kWh</div><div class="kpi-label">Grid Export</div></div>
@@ -163,6 +166,7 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiYtdSolar').textContent         = fmtKWh(metrics.yearToDate.value);
     $root.querySelector('#kpiPrevYearChange').textContent   = formatDeltaPercent(metrics.yearToDate.delta, metrics.yearToDate.previous);
     $root.querySelector('#kpiPrevYearTotal').textContent    = `PYTD ${fmtKWh(metrics.yearToDate.previous)}`;
+    $root.querySelector('#kpiYearToDateDetail').textContent = formatDeltaDetail(metrics.yearToDate, 'PYTD');
     $root.querySelector('#kpiImport').textContent           = fmtKWh(metrics.totalImp);
     $root.querySelector('#kpiExport').textContent           = fmtKWh(metrics.totalExp);
     $root.querySelector('#kpiSelfSufficiency').textContent  = fmtPct(metrics.selfSufficiency);
