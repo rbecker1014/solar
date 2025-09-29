@@ -202,7 +202,7 @@ function drawDailyChart(){
     }
   }
 
-  const labels = rows.map(r => r.date);
+  const labels = rows.map(r => formatDailyLabel(r.date));
   const use = rows.map(r => Number(r.usage || 0));
   const solar = rows.map(r => Number(r.prod || 0));
 
@@ -243,4 +243,14 @@ function drawDailyChart(){
 function handleDailySliderInput(event){
   state.dailyWindowStart = Number(event.target.value) || 0;
   drawDailyChart();
+}
+
+function formatDailyLabel(dateString){
+  if (!dateString) return '';
+  const date = new Date(`${dateString}T00:00:00`);
+  if (Number.isNaN(date.getTime())){
+    return dateString;
+  }
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' });
+  return [dateString, weekday];
 }
