@@ -4,6 +4,33 @@ import { getDefaultDateRange, getNormalizedDateRange } from './date-range.js';
 
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
 const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
+const DAY_MS   = 86_400_000;
+
+function toDateKey(date){
+  if (!(date instanceof Date)) return '';
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function hasCompleteData(row = {}){
+  const solar = Number(row?.solarKWh || 0);
+  const exportVal = Number(row?.gridExport || 0);
+  const hasSolarSide = (Number.isFinite(solar) && Math.abs(solar) > 0)
+    || (Number.isFinite(exportVal) && Math.abs(exportVal) > 0);
+
+  if (!hasSolarSide) return false;
+
+  const usage = Number(row?.homeKWh || 0);
+  const importVal = Number(row?.gridImport || 0);
+  const net = Number(row?.netKWh || 0);
+  const hasUsageSide = (Number.isFinite(usage) && Math.abs(usage) > 0)
+    || (Number.isFinite(importVal) && Math.abs(importVal) > 0)
+    || (Number.isFinite(net) && Math.abs(net) > 0);
+
+  return hasUsageSide;
+}
 
 function buildRangeKey(range){
   return `${range.from}::${range.to}`;
@@ -184,6 +211,7 @@ export function selectKpiMetrics(state){
     ...row,
     dateObj: row?.date ? new Date(`${row.date}T00:00:00`) : null,
   }));
+  const rowsByDate = new Map(parsedAllRows.map((row) => [row.date, row]));
   let topProductionDay = null;
   const totals = parsedRows.reduce((acc, row) => {
     acc.totalSolar += row.solarKWh;
@@ -237,25 +265,59 @@ export function selectKpiMetrics(state){
     return latest;
   }, null);
 
-  if (latestRow?.dateObj){
-    const currentDate = latestRow.dateObj;
+  const latestCompleteRow = parsedAllRows.reduce((latest, row) => {
+    if (!row.dateObj || !hasCompleteData(row)) return latest;
+    if (!latest || row.dateObj > latest.dateObj) return row;
+    return latest;
+  }, null);
 
-    const currentWeekday = currentDate.getDay();
-    const comparableWeekDays = currentWeekday + 1;
+  const effectiveCurrentRow = latestCompleteRow || latestRow;
+
+  if (effectiveCurrentRow?.dateObj){
+    const currentDate = new Date(effectiveCurrentRow.dateObj);
+    currentDate.setHours(0, 0, 0, 0);
+
     const startOfWeek = new Date(currentDate);
-    startOfWeek.setDate(currentDate.getDate() - currentWeekday);
-    const currentWeekTotal = sumProductionBetween(parsedAllRows, startOfWeek, currentDate);
+    startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    const weekRowsRaw = parsedAllRows
+      .filter((row) => row.dateObj && row.dateObj >= startOfWeek && row.dateObj <= currentDate);
+    const weekRows = weekRowsRaw
+      .filter((row) => hasCompleteData(row))
+      .sort((a, b) => a.dateObj - b.dateObj);
+    const weekRowsWithFallback = weekRows.length > 0
+      ? weekRows
+      : weekRowsRaw.sort((a, b) => a.dateObj - b.dateObj);
+
+    const offsets = weekRowsWithFallback.map((row) => {
+      const rowDate = new Date(row.dateObj);
+      rowDate.setHours(0, 0, 0, 0);
+      return Math.round((rowDate - startOfWeek) / DAY_MS);
+    });
+    const uniqueOffsets = Array.from(new Set(offsets)).sort((a, b) => a - b);
+
+    const currentWeekTotal = weekRowsWithFallback.reduce((sum, row) => sum + row.solarKWh, 0);
     const prevWeekStart = new Date(startOfWeek);
     prevWeekStart.setDate(startOfWeek.getDate() - 7);
-    const prevWeekEnd = new Date(prevWeekStart);
-    prevWeekEnd.setDate(prevWeekStart.getDate() + (comparableWeekDays - 1));
-    const prevWeekTotal = sumProductionBetween(parsedAllRows, prevWeekStart, prevWeekEnd);
+    prevWeekStart.setHours(0, 0, 0, 0);
+
+    const prevWeekTotal = uniqueOffsets.reduce((sum, offset) => {
+      const target = new Date(prevWeekStart);
+      target.setDate(prevWeekStart.getDate() + offset);
+      const match = rowsByDate.get(toDateKey(target));
+      return sum + (match ? match.solarKWh : 0);
+    }, 0);
+
+    const coverageStart = weekRowsWithFallback[0]?.dateObj || startOfWeek;
+    const coverageEnd = weekRowsWithFallback[weekRowsWithFallback.length - 1]?.dateObj || currentDate;
+
     weekToDate = {
       value: currentWeekTotal,
       previous: prevWeekTotal,
       delta: currentWeekTotal - prevWeekTotal,
-      start: new Date(startOfWeek),
-      end: new Date(currentDate),
+      start: new Date(coverageStart),
+      end: new Date(coverageEnd),
     };
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
