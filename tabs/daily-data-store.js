@@ -254,6 +254,8 @@ export function selectKpiMetrics(state){
       value: currentWeekTotal,
       previous: prevWeekTotal,
       delta: currentWeekTotal - prevWeekTotal,
+      start: new Date(startOfWeek),
+      end: new Date(currentDate),
     };
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -269,6 +271,8 @@ export function selectKpiMetrics(state){
       value: currentMonthTotal,
       previous: prevMonthTotal,
       delta: currentMonthTotal - prevMonthTotal,
+      start: new Date(startOfMonth),
+      end: new Date(currentDate),
     };
 
     const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
@@ -282,6 +286,8 @@ export function selectKpiMetrics(state){
       value: currentYearTotal,
       previous: prevYearTotal,
       delta: currentYearTotal - prevYearTotal,
+      start: new Date(startOfYear),
+      end: new Date(currentDate),
     };
   }
 
