@@ -277,22 +277,13 @@ export function selectKpiMetrics(state){
       ? weekRows
       : weekRowsRaw.sort((a, b) => a.dateObj - b.dateObj);
 
-    const offsets = weekRowsWithFallback.map((row) => {
-      const rowDate = new Date(row.dateObj);
-      rowDate.setHours(0, 0, 0, 0);
-      return Math.round((rowDate - startOfWeek) / DAY_MS);
-    });
-    const uniqueOffsets = Array.from(new Set(offsets)).sort((a, b) => a - b);
-
     const currentWeekTotal = weekRowsWithFallback.reduce((sum, row) => sum + row.solarKWh, 0);
-    const prevWeekStart = new Date(startOfWeek);
-    prevWeekStart.setDate(startOfWeek.getDate() - 7);
-    prevWeekStart.setHours(0, 0, 0, 0);
-
-    const prevWeekTotal = uniqueOffsets.reduce((sum, offset) => {
-      const target = new Date(prevWeekStart);
-      target.setDate(prevWeekStart.getDate() + offset);
-      const match = rowsByDate.get(toDateKey(target));
+    const prevWeekTotal = weekRowsWithFallback.reduce((sum, row) => {
+      if (!row?.dateObj) return sum;
+      const prevDate = new Date(row.dateObj);
+      prevDate.setDate(prevDate.getDate() - 7);
+      prevDate.setHours(0, 0, 0, 0);
+      const match = rowsByDate.get(toDateKey(prevDate));
       return sum + (match ? match.solarKWh : 0);
     }, 0);
 
