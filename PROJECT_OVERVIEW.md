@@ -37,7 +37,6 @@ Tabs share date range changes via a `document` event so that selecting a range i
 
 ## Additional Notes
 
-- The mobile experience relies on Tailwind-style utility classes served from the pinned TailwindCSS CDN stylesheet in `index.html`, keeping the bundle static without requiring a build step.
-- Progressive Web App metadata includes both legacy (`apple-mobile-web-app-capable`) and standards-based (`mobile-web-app-capable`) tags plus an inline SVG favicon so mobile browsers no longer log missing asset warnings.
+- The mobile experience relies on Tailwind-style utility classes baked into `index.html` and shared styles; no build tooling is required.
 - `README.md`, `test.html`, and `Test2.html` are legacy artifacts and are not part of the active application. Focus on the modules outlined above when working on the project.
 - The refreshed application shell applies a subtle deep-blue gradient backdrop, glassmorphism header, and glowing tab bar accent to give the UI more personality while keeping analytics cards legible on light surfaces. Form inputs also received focus styling to improve usability on touch devices.
