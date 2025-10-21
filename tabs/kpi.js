@@ -24,6 +24,7 @@ export async function mount(root, ctx){
             <div class="kpi" id="kpiWeekToDate">0 kWh</div>
             <div class="kpi-label">WTD Solar</div>
             <div class="text-xs text-slate-500" id="kpiWeekToDateDetail">vs PWTD</div>
+            <div class="text-xs text-slate-500" id="kpiWeekToDateRows">Rows used: WTD 0 · PWTD 0</div>
           </div>
           <div class="card">
             <div class="kpi" id="kpiPrevWeekChange">0%</div>
@@ -165,6 +166,12 @@ function fmtShortDate(value){
   return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit' }).format(date);
 }
 
+function formatRowUsage({ currentRowCount = 0, previousRowCount = 0 } = {}){
+  const current = Number.isFinite(Number(currentRowCount)) ? Number(currentRowCount) : 0;
+  const previous = Number.isFinite(Number(previousRowCount)) ? Number(previousRowCount) : 0;
+  return `Rows used: WTD ${current} · PWTD ${previous}`;
+}
+
 function formatCoverageRange(range = {}){
   const start = fmtShortDate(range.start);
   const end = fmtShortDate(range.end);
@@ -224,6 +231,7 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiAvgDailyUse').textContent      = fmtKWh(metrics.avgDailyUse);
     $root.querySelector('#kpiAvgDailyProd').textContent     = fmtKWh(metrics.avgDailyProd);
     $root.querySelector('#kpiWeekToDateDetail').textContent   = formatDeltaDetail(metrics.weekToDate, 'PWTD');
+    $root.querySelector('#kpiWeekToDateRows').textContent     = formatRowUsage(metrics.weekToDate);
     $root.querySelector('#kpiMonthToDateDetail').textContent  = formatDeltaDetail(metrics.monthToDate, 'PMTD');
     $root.querySelector('#kpiWeekRange').textContent          = formatCoverageRange(metrics.weekToDate);
     $root.querySelector('#kpiMonthRange').textContent         = formatCoverageRange(metrics.monthToDate);

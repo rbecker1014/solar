@@ -242,7 +242,7 @@ export function selectKpiMetrics(state){
     }, 0);
   }
 
-  let weekToDate = { value: 0, previous: 0, delta: 0 };
+  let weekToDate = { value: 0, previous: 0, delta: 0, currentRowCount: 0, previousRowCount: 0 };
   let monthToDate = { value: 0, previous: 0, delta: 0 };
   let yearToDate = { value: 0, previous: 0, delta: 0 };
 
@@ -281,15 +281,32 @@ export function selectKpiMetrics(state){
       ? weekRows
       : weekRowsWithFallback;
 
-    const currentWeekTotal = rowsUsedForWeekTotals.reduce((sum, row) => sum + row.solarKWh, 0);
-    const prevWeekTotal = rowsUsedForWeekTotals.reduce((sum, row) => {
-      if (!row?.dateObj) return sum;
+    const currentWeekAggregation = rowsUsedForWeekTotals.reduce((acc, row) => {
+      if (!row) return acc;
+      const value = Number(row.solarKWh);
+      if (Number.isFinite(value)){
+        acc.total += value;
+        acc.count += 1;
+      }
+      return acc;
+    }, { total: 0, count: 0 });
+
+    const prevWeekAggregation = rowsUsedForWeekTotals.reduce((acc, row) => {
+      if (!row?.dateObj) return acc;
       const prevDate = new Date(row.dateObj);
       prevDate.setDate(prevDate.getDate() - 7);
       prevDate.setHours(0, 0, 0, 0);
       const match = rowsByDate.get(toDateKey(prevDate));
-      return sum + (match ? match.solarKWh : 0);
-    }, 0);
+      const value = Number(match?.solarKWh);
+      if (Number.isFinite(value)){
+        acc.total += value;
+        acc.count += 1;
+      }
+      return acc;
+    }, { total: 0, count: 0 });
+
+    const currentWeekTotal = currentWeekAggregation.total;
+    const prevWeekTotal = prevWeekAggregation.total;
 
     const coverageStart = rowsUsedForWeekTotals[0]?.dateObj || startOfWeek;
     const coverageEnd = rowsUsedForWeekTotals[rowsUsedForWeekTotals.length - 1]?.dateObj || currentDate;
@@ -300,6 +317,8 @@ export function selectKpiMetrics(state){
       delta: currentWeekTotal - prevWeekTotal,
       start: new Date(coverageStart),
       end: new Date(coverageEnd),
+      currentRowCount: currentWeekAggregation.count,
+      previousRowCount: prevWeekAggregation.count,
     };
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
