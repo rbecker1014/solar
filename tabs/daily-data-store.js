@@ -15,21 +15,8 @@ function toDateKey(date){
 }
 
 function hasCompleteData(row = {}){
-  const solar = Number(row?.solarKWh || 0);
-  const exportVal = Number(row?.gridExport || 0);
-  const hasSolarSide = (Number.isFinite(solar) && Math.abs(solar) > 0)
-    || (Number.isFinite(exportVal) && Math.abs(exportVal) > 0);
-
-  if (!hasSolarSide) return false;
-
-  const usage = Number(row?.homeKWh || 0);
-  const importVal = Number(row?.gridImport || 0);
-  const net = Number(row?.netKWh || 0);
-  const hasUsageSide = (Number.isFinite(usage) && Math.abs(usage) > 0)
-    || (Number.isFinite(importVal) && Math.abs(importVal) > 0)
-    || (Number.isFinite(net) && Math.abs(net) > 0);
-
-  return hasUsageSide;
+  const fields = ['solarKWh', 'homeKWh', 'gridImport', 'gridExport', 'netKWh'];
+  return fields.some((field) => Math.abs(Number(row[field] || 0)) > 0);
 }
 
 function buildRangeKey(range){
