@@ -277,8 +277,12 @@ export function selectKpiMetrics(state){
       ? weekRows
       : weekRowsRaw.sort((a, b) => a.dateObj - b.dateObj);
 
-    const currentWeekTotal = weekRowsWithFallback.reduce((sum, row) => sum + row.solarKWh, 0);
-    const prevWeekTotal = weekRowsWithFallback.reduce((sum, row) => {
+    const rowsUsedForWeekTotals = weekRows.length > 0
+      ? weekRows
+      : weekRowsWithFallback;
+
+    const currentWeekTotal = rowsUsedForWeekTotals.reduce((sum, row) => sum + row.solarKWh, 0);
+    const prevWeekTotal = rowsUsedForWeekTotals.reduce((sum, row) => {
       if (!row?.dateObj) return sum;
       const prevDate = new Date(row.dateObj);
       prevDate.setDate(prevDate.getDate() - 7);
@@ -287,8 +291,8 @@ export function selectKpiMetrics(state){
       return sum + (match ? match.solarKWh : 0);
     }, 0);
 
-    const coverageStart = weekRowsWithFallback[0]?.dateObj || startOfWeek;
-    const coverageEnd = weekRowsWithFallback[weekRowsWithFallback.length - 1]?.dateObj || currentDate;
+    const coverageStart = rowsUsedForWeekTotals[0]?.dateObj || startOfWeek;
+    const coverageEnd = rowsUsedForWeekTotals[rowsUsedForWeekTotals.length - 1]?.dateObj || currentDate;
 
     weekToDate = {
       value: currentWeekTotal,
