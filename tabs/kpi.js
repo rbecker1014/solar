@@ -15,7 +15,10 @@ export async function mount(root, ctx){
       <div data-range-host></div>
 
       <section class="space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Week To Date</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 flex items-baseline gap-2">
+          <span>Week To Date</span>
+          <span class="normal-case text-xs font-normal text-slate-400" id="kpiWeekRange"></span>
+        </h2>
         <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div class="card">
             <div class="kpi" id="kpiWeekToDate">0 kWh</div>
@@ -33,7 +36,10 @@ export async function mount(root, ctx){
       <hr class="border-t border-slate-200 dark:border-slate-700" />
 
       <section class="space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Month To Date</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 flex items-baseline gap-2">
+          <span>Month To Date</span>
+          <span class="normal-case text-xs font-normal text-slate-400" id="kpiMonthRange"></span>
+        </h2>
         <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div class="card">
             <div class="kpi" id="kpiMonthToDate">0 kWh</div>
@@ -51,7 +57,10 @@ export async function mount(root, ctx){
       <hr class="border-t border-slate-200 dark:border-slate-700" />
 
       <section class="space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">Year To Date</h2>
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 flex items-baseline gap-2">
+          <span>Year To Date</span>
+          <span class="normal-case text-xs font-normal text-slate-400" id="kpiYearRange"></span>
+        </h2>
         <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
           <div class="card">
             <div class="kpi" id="kpiYtdSolar">0 kWh</div>
@@ -149,6 +158,24 @@ function fmtDate(value){
   return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(date);
 }
 
+function fmtShortDate(value){
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) return '';
+  return new Intl.DateTimeFormat('en-US', { month: '2-digit', day: '2-digit' }).format(date);
+}
+
+function formatCoverageRange(range = {}){
+  const start = fmtShortDate(range.start);
+  const end = fmtShortDate(range.end);
+  if (!start && !end) return '';
+  if (start && end){
+    if (start === end) return `, ${start}`;
+    return `, ${start} to ${end}`;
+  }
+  return `, ${start || end}`;
+}
+
 function formatDeltaPercent(delta = 0, previous = 0){
   const prevNum = Number(previous);
   if (!Number.isFinite(prevNum) || Math.abs(prevNum) < Number.EPSILON){
@@ -198,6 +225,9 @@ async function loadKPIs(ctx){
     $root.querySelector('#kpiAvgDailyProd').textContent     = fmtKWh(metrics.avgDailyProd);
     $root.querySelector('#kpiWeekToDateDetail').textContent   = formatDeltaDetail(metrics.weekToDate, 'PWTD');
     $root.querySelector('#kpiMonthToDateDetail').textContent  = formatDeltaDetail(metrics.monthToDate, 'PMTD');
+    $root.querySelector('#kpiWeekRange').textContent          = formatCoverageRange(metrics.weekToDate);
+    $root.querySelector('#kpiMonthRange').textContent         = formatCoverageRange(metrics.monthToDate);
+    $root.querySelector('#kpiYearRange').textContent          = formatCoverageRange(metrics.yearToDate);
 
     const top = metrics.topProductionDay;
     const topValueEl = $root.querySelector('#kpiTopProdValue');
