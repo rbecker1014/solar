@@ -8,6 +8,7 @@ let state = { recent: [], monthly: [], dailyWindowStart: 0 };
 let monthlyChart = null;
 let dailyChart = null;
 let rangeListener = null;
+let hasAnnouncedReady = false;
 
 export async function mount(root,ctx){
   $root = root;
@@ -113,6 +114,15 @@ async function load(ctx){
     draw();
     const { from, to } = getNormalizedDateRange(ctx?.state);
     log('charts refresh: ' + JSON.stringify({ recent: state.recent.length, monthly: state.monthly.length, from, to }));
+
+    if (!hasAnnouncedReady){
+      hasAnnouncedReady = true;
+      document.dispatchEvent(
+        new CustomEvent('app:charts-ready', {
+          detail: { timestamp: Date.now(), recent: state.recent.length, monthly: state.monthly.length },
+        }),
+      );
+    }
   } catch (err) {
     console.error('load error', err);
     log('load error: ' + err.message);
