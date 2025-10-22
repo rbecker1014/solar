@@ -14,9 +14,14 @@ function toDateKey(date){
   return `${year}-${month}-${day}`;
 }
 
+function toFiniteNumber(value){
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+}
+
 function hasCompleteData(row = {}){
   const fields = ['solarKWh', 'homeKWh', 'gridImport', 'gridExport', 'netKWh'];
-  return fields.some((field) => Math.abs(Number(row[field] || 0)) > 0);
+  return fields.some((field) => Math.abs(toFiniteNumber(row[field])) > 0);
 }
 
 function buildRangeKey(range){
@@ -292,18 +297,23 @@ export function selectKpiMetrics(state){
   const useSolarData = parsedSolarRows.length > 0;
   let topProductionDay = null;
   const totals = parsedRows.reduce((acc, row) => {
-    acc.totalSolar += row.solarKWh;
-    acc.totalUse += row.homeKWh;
-    acc.totalImp += row.gridImport;
-    acc.totalExp += row.gridExport;
+    const solar = toFiniteNumber(row.solarKWh);
+    const home = toFiniteNumber(row.homeKWh);
+    const imp = toFiniteNumber(row.gridImport);
+    const exp = toFiniteNumber(row.gridExport);
+
+    acc.totalSolar += solar;
+    acc.totalUse += home;
+    acc.totalImp += imp;
+    acc.totalExp += exp;
     acc.dayCount += 1;
 
-    if (!topProductionDay || row.solarKWh > topProductionDay.solarKWh || (row.solarKWh === topProductionDay.solarKWh && row.date > topProductionDay.date)){
+    if (!topProductionDay || solar > topProductionDay.solarKWh || (solar === topProductionDay.solarKWh && row.date > topProductionDay.date)){
       topProductionDay = {
         date: row.date,
-        solarKWh: row.solarKWh,
-        homeKWh: row.homeKWh,
-        gridExport: row.gridExport,
+        solarKWh: solar,
+        homeKWh: home,
+        gridExport: toFiniteNumber(row.gridExport),
       };
     }
     return acc;
@@ -374,7 +384,7 @@ export function selectKpiMetrics(state){
 
     const currentWeekAggregation = rowsUsedForWeekTotals.reduce((acc, row) => {
       if (!row) return acc;
-      const value = Number(row.solarKWh);
+      const value = toFiniteNumber(row.solarKWh);
       if (Number.isFinite(value)){
         acc.total += value;
         acc.count += 1;
@@ -388,7 +398,7 @@ export function selectKpiMetrics(state){
       prevDate.setDate(prevDate.getDate() - 7);
       prevDate.setHours(0, 0, 0, 0);
       const match = solarRowsByDate.get(toDateKey(prevDate));
-      const value = Number(match?.solarKWh);
+      const value = toFiniteNumber(match?.solarKWh);
       if (Number.isFinite(value)){
         acc.total += value;
         acc.count += 1;
@@ -465,8 +475,8 @@ export function selectChartSeries(state){
   const sortedDaily = [...rows].sort((a, b) => a.date.localeCompare(b.date));
   const recent = sortedDaily.map((row) => ({
     date: row.date,
-    usage: row.homeKWh,
-    prod: row.solarKWh,
+    usage: toFiniteNumber(row.homeKWh),
+    prod: toFiniteNumber(row.solarKWh),
   }));
 
   const monthlyMap = new Map();
@@ -476,8 +486,8 @@ export function selectChartSeries(state){
       monthlyMap.set(month, { usage: 0, prod: 0 });
     }
     const current = monthlyMap.get(month);
-    current.usage += row.homeKWh;
-    current.prod += row.solarKWh;
+    current.usage += toFiniteNumber(row.homeKWh);
+    current.prod += toFiniteNumber(row.solarKWh);
   }
 
   const monthly = Array.from(monthlyMap.entries())
