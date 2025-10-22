@@ -78,6 +78,34 @@ async function fetchCombinedDaily(range){
   }));
 }
 
+async function fetchSolarProduction(range){
+  const sql = `
+    SELECT
+      date AS Date,
+      Production AS SolarKWh
+    FROM \`solar-data-api.energy.solar_production\`
+    WHERE date BETWEEN DATE '${range.from}' AND DATE '${range.to}'
+    ORDER BY Date
+  `;
+
+  const url = `${ENDPOINT}?token=${encodeURIComponent(TOKEN)}&query=${encodeURIComponent(sql)}`;
+  const res = await fetch(url);
+  const j = await res.json();
+  if (!j || j.ok !== true){
+    const message = (j && j.error) || 'Unknown error';
+    throw new Error(message);
+  }
+  const rows = Array.isArray(j.rows) ? j.rows : [];
+  return rows.map((row) => ({
+    date: row.Date,
+    solarKWh: Number(row.SolarKWh ?? row.Production ?? 0),
+    homeKWh: 0,
+    netKWh: 0,
+    gridImport: 0,
+    gridExport: 0,
+  }));
+}
+
 function getStore(state){
   if (!state.dailyData){
     state.dailyData = {
@@ -106,6 +134,21 @@ function getFullStore(state){
     };
   }
   return state.dailyDataFull;
+}
+
+function getSolarStore(state){
+  if (!state.dailySolarData){
+    state.dailySolarData = {
+      key: null,
+      range: null,
+      rows: [],
+      status: 'idle',
+      lastFetched: null,
+      error: null,
+      promise: null,
+    };
+  }
+  return state.dailySolarData;
 }
 
 export async function ensureDailyDataLoaded(state){
@@ -187,6 +230,46 @@ export async function ensureFullDailyDataLoaded(state){
   return promise;
 }
 
+export async function ensureSolarProductionLoaded(state){
+  if (!state){
+    throw new Error('Shared state is required to load solar production data.');
+  }
+
+  const range = getDefaultDateRange();
+  const key = buildRangeKey(range);
+  const store = getSolarStore(state);
+
+  if (store.key === key){
+    if (store.status === 'ready'){ return store.rows; }
+    if (store.status === 'loading' && store.promise){ return store.promise; }
+  }
+
+  store.key = key;
+  store.range = range;
+  store.rows = [];
+  store.status = 'loading';
+  store.error = null;
+
+  const promise = fetchSolarProduction(range)
+    .then((rows) => {
+      store.rows = rows;
+      store.status = 'ready';
+      store.lastFetched = new Date().toISOString();
+      return rows;
+    })
+    .catch((err) => {
+      store.status = 'error';
+      store.error = err;
+      throw err;
+    })
+    .finally(() => {
+      store.promise = null;
+    });
+
+  store.promise = promise;
+  return promise;
+}
+
 export function selectKpiMetrics(state){
   const filteredRows = state?.dailyData?.rows || [];
   const parsedRows = filteredRows.map((row) => ({
@@ -199,6 +282,14 @@ export function selectKpiMetrics(state){
     dateObj: row?.date ? new Date(`${row.date}T00:00:00`) : null,
   }));
   const rowsByDate = new Map(parsedAllRows.map((row) => [row.date, row]));
+  const solarRows = state?.dailySolarData?.rows || [];
+  const parsedSolarRows = solarRows.map((row) => ({
+    ...row,
+    dateObj: row?.date ? new Date(`${row.date}T00:00:00`) : null,
+  }));
+  const solarSourceRows = parsedSolarRows.length > 0 ? parsedSolarRows : parsedAllRows;
+  const solarRowsByDate = new Map(solarSourceRows.map((row) => [row.date, row]));
+  const useSolarData = parsedSolarRows.length > 0;
   let topProductionDay = null;
   const totals = parsedRows.reduce((acc, row) => {
     acc.totalSolar += row.solarKWh;
@@ -246,17 +337,19 @@ export function selectKpiMetrics(state){
   let monthToDate = { value: 0, previous: 0, delta: 0 };
   let yearToDate = { value: 0, previous: 0, delta: 0 };
 
-  const latestRow = parsedAllRows.reduce((latest, row) => {
+  const latestRow = solarSourceRows.reduce((latest, row) => {
     if (!row.dateObj) return latest;
     if (!latest || row.dateObj > latest.dateObj) return row;
     return latest;
   }, null);
 
-  const latestCompleteRow = parsedAllRows.reduce((latest, row) => {
-    if (!row.dateObj || !hasCompleteData(row)) return latest;
-    if (!latest || row.dateObj > latest.dateObj) return row;
-    return latest;
-  }, null);
+  const latestCompleteRow = useSolarData
+    ? latestRow
+    : solarSourceRows.reduce((latest, row) => {
+        if (!row.dateObj || !hasCompleteData(row)) return latest;
+        if (!latest || row.dateObj > latest.dateObj) return row;
+        return latest;
+      }, null);
 
   const effectiveCurrentRow = latestCompleteRow || latestRow;
 
@@ -268,18 +361,16 @@ export function selectKpiMetrics(state){
     startOfWeek.setDate(currentDate.getDate() - currentDate.getDay());
     startOfWeek.setHours(0, 0, 0, 0);
 
-    const weekRowsRaw = parsedAllRows
+    const weekRowsRaw = solarSourceRows
       .filter((row) => row.dateObj && row.dateObj >= startOfWeek && row.dateObj <= currentDate);
-    const weekRows = weekRowsRaw
-      .filter((row) => hasCompleteData(row))
-      .sort((a, b) => a.dateObj - b.dateObj);
-    const weekRowsWithFallback = weekRows.length > 0
-      ? weekRows
-      : weekRowsRaw.sort((a, b) => a.dateObj - b.dateObj);
-
-    const rowsUsedForWeekTotals = weekRows.length > 0
-      ? weekRows
-      : weekRowsWithFallback;
+    const sortedWeekRows = [...weekRowsRaw].sort((a, b) => a.dateObj - b.dateObj);
+    let rowsUsedForWeekTotals = sortedWeekRows;
+    if (!useSolarData){
+      const weekRows = sortedWeekRows.filter((row) => hasCompleteData(row));
+      if (weekRows.length > 0){
+        rowsUsedForWeekTotals = weekRows;
+      }
+    }
 
     const currentWeekAggregation = rowsUsedForWeekTotals.reduce((acc, row) => {
       if (!row) return acc;
@@ -296,7 +387,7 @@ export function selectKpiMetrics(state){
       const prevDate = new Date(row.dateObj);
       prevDate.setDate(prevDate.getDate() - 7);
       prevDate.setHours(0, 0, 0, 0);
-      const match = rowsByDate.get(toDateKey(prevDate));
+      const match = solarRowsByDate.get(toDateKey(prevDate));
       const value = Number(match?.solarKWh);
       if (Number.isFinite(value)){
         acc.total += value;
@@ -323,13 +414,13 @@ export function selectKpiMetrics(state){
 
     const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
     const monthToDateDays = currentDate.getDate();
-    const currentMonthTotal = sumProductionBetween(parsedAllRows, startOfMonth, currentDate);
+    const currentMonthTotal = sumProductionBetween(solarSourceRows, startOfMonth, currentDate);
     const prevMonthStart = new Date(currentDate.getFullYear(), currentDate.getMonth() - 1, 1);
     const prevMonthDays = new Date(prevMonthStart.getFullYear(), prevMonthStart.getMonth() + 1, 0).getDate();
     const comparableMonthDays = Math.min(monthToDateDays, prevMonthDays);
     const prevMonthEnd = new Date(prevMonthStart);
     prevMonthEnd.setDate(prevMonthStart.getDate() + (comparableMonthDays - 1));
-    const prevMonthTotal = sumProductionBetween(parsedAllRows, prevMonthStart, prevMonthEnd);
+    const prevMonthTotal = sumProductionBetween(solarSourceRows, prevMonthStart, prevMonthEnd);
     monthToDate = {
       value: currentMonthTotal,
       previous: prevMonthTotal,
@@ -340,11 +431,11 @@ export function selectKpiMetrics(state){
 
     const startOfYear = new Date(currentDate.getFullYear(), 0, 1);
     const ytdDays = Math.max(1, Math.round((currentDate - startOfYear) / 86400000) + 1);
-    const currentYearTotal = sumProductionBetween(parsedAllRows, startOfYear, currentDate);
+    const currentYearTotal = sumProductionBetween(solarSourceRows, startOfYear, currentDate);
     const prevYearStart = new Date(currentDate.getFullYear() - 1, 0, 1);
     const prevYearEnd = new Date(prevYearStart);
     prevYearEnd.setDate(prevYearStart.getDate() + (ytdDays - 1));
-    const prevYearTotal = sumProductionBetween(parsedAllRows, prevYearStart, prevYearEnd);
+    const prevYearTotal = sumProductionBetween(solarSourceRows, prevYearStart, prevYearEnd);
     yearToDate = {
       value: currentYearTotal,
       previous: prevYearTotal,

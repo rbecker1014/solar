@@ -1,7 +1,7 @@
 // tabs/kpi.js
 
 import { renderDateRange } from './date-range.js';
-import { ensureDailyDataLoaded, ensureFullDailyDataLoaded, selectKpiMetrics } from './daily-data-store.js';
+import { ensureDailyDataLoaded, ensureFullDailyDataLoaded, ensureSolarProductionLoaded, selectKpiMetrics } from './daily-data-store.js';
 
 let $root = null;
 let rangeListener = null;
@@ -210,6 +210,7 @@ async function loadKPIs(ctx){
     await Promise.all([
       ensureDailyDataLoaded(ctx?.state),
       ensureFullDailyDataLoaded(ctx?.state),
+      ensureSolarProductionLoaded(ctx?.state),
     ]);
     const metrics = selectKpiMetrics(ctx?.state);
 
