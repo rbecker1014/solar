@@ -121,8 +121,8 @@ async function load(ctx){
 
 function draw(){
   drawMonthlyChart();
-  drawDailyChart();
   renderMonthlyTable();
+  drawDailyChart();
 }
 
 function drawMonthlyChart(){
@@ -171,32 +171,39 @@ function renderMonthlyTable(){
   const tbody = $root?.querySelector('#monthlyTableBody');
   if (!tbody) return;
 
-  tbody.innerHTML = '';
-
   if (!state.monthly?.length){
-    const tr = document.createElement('tr');
-    tr.innerHTML = '<td colspan="4" class="p-2 text-center text-gray-500">No data</td>';
-    tbody.appendChild(tr);
+    tbody.innerHTML = '<tr><td colspan="4" class="p-2 text-center text-gray-500">No data</td></tr>';
     return;
   }
 
-  const frag = document.createDocumentFragment();
+  const rowsHtml = state.monthly
+    .map((row) => {
+      const usage = Number(row.usage || 0);
+      const solar = Number(row.prod || 0);
+      const net = usage - solar;
+      return `
+        <tr>
+          <td class="p-2 whitespace-nowrap">${formatMonthLabel(row.month)}</td>
+          <td class="p-2 text-right">${usage.toFixed(2)}</td>
+          <td class="p-2 text-right">${solar.toFixed(2)}</td>
+          <td class="p-2 text-right">${net.toFixed(2)}</td>
+        </tr>
+      `;
+    })
+    .join('');
 
-  for (const row of state.monthly){
-    const usage = Number(row.usage || 0);
-    const solar = Number(row.prod || 0);
-    const net = usage - solar;
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td class="p-2 whitespace-nowrap">${row.month}</td>
-      <td class="p-2 text-right">${usage.toFixed(2)}</td>
-      <td class="p-2 text-right">${solar.toFixed(2)}</td>
-      <td class="p-2 text-right">${net.toFixed(2)}</td>
-    `;
-    frag.appendChild(tr);
-  }
+  tbody.innerHTML = rowsHtml;
+}
 
-  tbody.appendChild(frag);
+function formatMonthLabel(month){
+  if (!month) return '';
+  const [year, monthIndex] = month.split('-');
+  if (!year || !monthIndex) return month;
+
+  const date = new Date(Number(year), Number(monthIndex) - 1, 1);
+  if (Number.isNaN(date.getTime())) return month;
+
+  return date.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
 }
 
 function getDailyWindow(){
