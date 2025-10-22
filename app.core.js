@@ -80,13 +80,105 @@ window.__showTab = showTab;
 
 // Wire navigation
 document.addEventListener('DOMContentLoaded', async () => {
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const loadingMessage = loadingOverlay?.querySelector('[data-loading-message]');
+  const hideLoadingOverlay = (delay = 0) => {
+    if (!loadingOverlay) return;
+    const performHide = () => {
+      loadingOverlay.classList.add('loading-hidden');
+      loadingOverlay.setAttribute('aria-busy', 'false');
+    };
+    if (delay > 0) {
+      setTimeout(performHide, delay);
+    } else {
+      performHide();
+    }
+  };
+  const showLoadingOverlay = (message) => {
+    if (!loadingOverlay) return;
+    if (message && loadingMessage){
+      loadingMessage.textContent = message;
+    }
+    loadingOverlay.classList.remove('loading-hidden');
+    loadingOverlay.setAttribute('aria-busy', 'true');
+  };
+
+  const readinessTargets = new Set(['kpi', 'charts']);
+  const readyFlags = new Set();
+  let overlayDismissed = false;
+  let loadSucceeded = false;
+
+  const attemptHideOverlay = () => {
+    if (overlayDismissed) return;
+    if (!loadSucceeded) return;
+    const allReady = Array.from(readinessTargets).every(flag => readyFlags.has(flag));
+    if (allReady){
+      overlayDismissed = true;
+      hideLoadingOverlay(160);
+    }
+  };
+
+  const primeCharts = async () => {
+    if (readyFlags.has('charts')) return;
+    const tempHost = document.createElement('div');
+    tempHost.setAttribute('aria-hidden', 'true');
+    tempHost.style.position = 'absolute';
+    tempHost.style.width = '1px';
+    tempHost.style.height = '1px';
+    tempHost.style.overflow = 'hidden';
+    tempHost.style.pointerEvents = 'none';
+    tempHost.style.opacity = '0';
+    document.body.appendChild(tempHost);
+
+    try {
+      if (!cache.has('charts')){
+        const mod = await registry.charts();
+        cache.set('charts', mod);
+      }
+      const chartsModule = cache.get('charts');
+      await chartsModule.mount(tempHost, { state, loadData });
+    } catch (err) {
+      console.error('charts warmup error:', err);
+    } finally {
+      tempHost.remove();
+    }
+  };
+
+  document.addEventListener('app:kpi-ready', () => {
+    readyFlags.add('kpi');
+    attemptHideOverlay();
+  }, { once: true });
+
+  document.addEventListener('app:charts-ready', () => {
+    readyFlags.add('charts');
+    attemptHideOverlay();
+  }, { once: true });
+
   document.querySelectorAll('nav [data-tab]').forEach(b => {
     b.addEventListener('click', () => showTab(b.dataset.tab));
   });
+
+  showLoadingOverlay('Calibrating KPIs and charts — this stays up until every tile is live.');
+
   try {
     await loadData();
+    loadSucceeded = true;
   } catch (e) {
     console.error(e);
+    showLoadingOverlay('We hit a snag getting fresh data — showing the latest saved view.');
+    overlayDismissed = true;
+    hideLoadingOverlay(3200);
+    return;
   }
-  showTab('kpi');
+
+  await showTab('kpi');
+  await primeCharts();
+  attemptHideOverlay();
+
+  setTimeout(() => {
+    if (!overlayDismissed){
+      overlayDismissed = true;
+      hideLoadingOverlay(320);
+    }
+  }, 10000);
 });

@@ -5,6 +5,7 @@ import { ensureDailyDataLoaded, ensureFullDailyDataLoaded, ensureSolarProduction
 
 let $root = null;
 let rangeListener = null;
+let hasAnnouncedReady = false;
 
 export async function mount(root, ctx){
   $root = root;
@@ -250,6 +251,15 @@ async function loadKPIs(ctx){
     }else{
       topValueEl.textContent = fmtKWh(0);
       topDetailEl.textContent = 'No production data';
+    }
+
+    if (!hasAnnouncedReady){
+      hasAnnouncedReady = true;
+      document.dispatchEvent(
+        new CustomEvent('app:kpi-ready', {
+          detail: { timestamp: Date.now() },
+        }),
+      );
     }
   }catch(err){
     console.error('kpi error:', err);
