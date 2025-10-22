@@ -80,13 +80,43 @@ window.__showTab = showTab;
 
 // Wire navigation
 document.addEventListener('DOMContentLoaded', async () => {
+  const loadingOverlay = document.getElementById('loading-overlay');
+  const loadingMessage = loadingOverlay?.querySelector('[data-loading-message]');
+  const hideLoadingOverlay = (delay = 0) => {
+    if (!loadingOverlay) return;
+    const performHide = () => {
+      loadingOverlay.classList.add('loading-hidden');
+      loadingOverlay.setAttribute('aria-busy', 'false');
+    };
+    if (delay > 0) {
+      setTimeout(performHide, delay);
+    } else {
+      performHide();
+    }
+  };
+  const showLoadingOverlay = (message) => {
+    if (!loadingOverlay) return;
+    if (message && loadingMessage){
+      loadingMessage.textContent = message;
+    }
+    loadingOverlay.classList.remove('loading-hidden');
+    loadingOverlay.setAttribute('aria-busy', 'true');
+  };
+
   document.querySelectorAll('nav [data-tab]').forEach(b => {
     b.addEventListener('click', () => showTab(b.dataset.tab));
   });
+
+  showLoadingOverlay('Syncing with the energy grid…');
+
+  let loadSucceeded = false;
   try {
     await loadData();
+    loadSucceeded = true;
   } catch (e) {
     console.error(e);
+    showLoadingOverlay('We hit a snag getting fresh data — showing the latest saved view.');
   }
   showTab('kpi');
+  hideLoadingOverlay(loadSucceeded ? 120 : 3200);
 });
