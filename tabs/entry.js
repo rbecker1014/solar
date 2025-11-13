@@ -50,8 +50,8 @@ function buildExtrapolatedRows(valuesABC, inputDateStr, inputITD, inputProd){
   if (missingSum < -1e-9){
     throw new Error('Numbers inconsistent: input ITD is less than last ITD plus Prod.');
   }
-  // Calculate average daily production and round to 3 decimals immediately
-  const avgDailyProduction = missingCount > 0 ? parseFloat((missingSum / missingCount).toFixed(3)) : 0;
+  // Calculate average daily production and round to 3 decimals immediately using Math.round for precision
+  const avgDailyProduction = missingCount > 0 ? Math.round((missingSum / missingCount) * 1000) / 1000 : 0;
   const rows = [];
   let cumulativeITD = lastITD;
 
