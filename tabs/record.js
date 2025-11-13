@@ -81,11 +81,31 @@ function updateEntryTime() {
 /**
  * Validates and formats form data before submission
  * @param {Object} formData - Raw form data { date, itd, prod }
+ * @param {boolean} useProjection - Whether to validate projected values instead of raw input
+ * @param {HTMLElement} root - The root element to find projected values from
  * @returns {Object} - { errors: Array, formatted: Object }
  */
-function validateAndFormatData(formData) {
+function validateAndFormatData(formData, useProjection = false, root = null) {
   const errors = [];
   const formatted = { ...formData };
+
+  // Get the actual values that will be validated and submitted
+  let itdToValidate = formData.itd;
+  let prodToValidate = formData.prod;
+
+  // If using projection, get projected values from data attributes
+  if (useProjection && root) {
+    const prodInput = root.querySelector('#prod');
+    const itdInput = root.querySelector('#itd');
+
+    if (prodInput?.hasAttribute('data-projected-total')) {
+      prodToValidate = prodInput.getAttribute('data-projected-total');
+    }
+
+    if (itdInput?.hasAttribute('data-projected-itd')) {
+      itdToValidate = itdInput.getAttribute('data-projected-itd');
+    }
+  }
 
   // Validate Date
   if (!formData.date || formData.date.trim() === '') {
@@ -107,11 +127,11 @@ function validateAndFormatData(formData) {
     }
   }
 
-  // Validate and format ITD (must be whole number)
-  if (!formData.itd || formData.itd === '') {
+  // Validate and format ITD (must be whole number) - use projected value if available
+  if (!itdToValidate || itdToValidate === '') {
     errors.push({ field: 'itd', message: 'ITD Production is required' });
   } else {
-    const itdNum = parseFloat(formData.itd);
+    const itdNum = parseFloat(itdToValidate);
     if (isNaN(itdNum)) {
       errors.push({ field: 'itd', message: 'ITD must be a valid number' });
     } else if (itdNum < 0) {
@@ -126,11 +146,11 @@ function validateAndFormatData(formData) {
     }
   }
 
-  // Validate and format Production (max 3 decimals)
-  if (!formData.prod || formData.prod === '') {
+  // Validate and format Production (max 3 decimals) - use projected value if available
+  if (!prodToValidate || prodToValidate === '') {
     errors.push({ field: 'prod', message: 'Production is required' });
   } else {
-    const prodNum = parseFloat(formData.prod);
+    const prodNum = parseFloat(prodToValidate);
     if (isNaN(prodNum)) {
       errors.push({ field: 'prod', message: 'Production must be a valid number' });
     } else if (prodNum < 0) {
@@ -150,10 +170,30 @@ function validateAndFormatData(formData) {
  * Displays validation errors inline on the form
  * @param {HTMLElement} root - The root element
  * @param {Array} errors - Array of error objects { field, message }
+ * @param {boolean} hasProjection - Whether projection is being used
  */
-function displayValidationErrors(root, errors) {
+function displayValidationErrors(root, errors, hasProjection = false) {
   // Clear any existing error displays
   clearValidationErrors(root);
+
+  // If using projection, add a note at the top of the form
+  if (hasProjection) {
+    const form = root.querySelector('.card');
+    const existingNote = form?.querySelector('.validation-projection-note');
+
+    if (form && !existingNote) {
+      const projectionNote = document.createElement('div');
+      projectionNote.className = 'validation-projection-note';
+      projectionNote.style.cssText = 'background-color: #fff3cd; padding: 10px; margin-bottom: 10px; border-radius: 4px; color: #856404; font-size: 14px;';
+      projectionNote.innerHTML = '📊 Validating projected end-of-day values';
+
+      // Insert after the h2 title
+      const title = form.querySelector('h2');
+      if (title && title.nextSibling) {
+        title.parentNode.insertBefore(projectionNote, title.nextSibling);
+      }
+    }
+  }
 
   errors.forEach(error => {
     // Find the input field
@@ -198,6 +238,11 @@ function clearValidationErrors(root) {
   // Remove error messages
   root.querySelectorAll('.field-error-message').forEach(msg => {
     msg.remove();
+  });
+
+  // Remove projection note
+  root.querySelectorAll('.validation-projection-note').forEach(note => {
+    note.remove();
   });
 }
 
@@ -310,20 +355,24 @@ function updateProductionProjection(root) {
     <div style="margin-bottom: 6px;">
       <strong>Estimated remaining:</strong> +${roundedProjection} kWh
     </div>
-    <div style="margin-bottom: 6px; font-size: 16px;">
-      <strong>Projected daily total:</strong> ${projectedTotal} kWh
+    <div style="margin-bottom: 6px; font-size: 16px; background-color: rgba(255,255,255,0.5); padding: 8px; border-radius: 4px;">
+      <strong>✅ Projected daily total:</strong> ${projectedTotal} kWh<br>
+      <span style="font-size: 13px; color: #666;">(This will be submitted as Production)</span>
     </div>
-    <div style="font-size: 16px;">
-      <strong>Projected ITD:</strong> ${projectedITD.toLocaleString()}
+    <div style="font-size: 16px; background-color: rgba(255,255,255,0.5); padding: 8px; border-radius: 4px;">
+      <strong>✅ Projected ITD:</strong> ${projectedITD.toLocaleString()}<br>
+      <span style="font-size: 13px; color: #666;">(This will be submitted as ITD Production)</span>
     </div>
     <div style="margin-top: 8px; font-size: 13px; font-style: italic;">
-      💡 These projected values will be submitted to the database
+      💡 When you click Submit, these projected values will be validated and sent to the database
     </div>
   `;
 
-  // Store projection in data attributes for submission
+  // Store projection in BOTH inputs' data attributes for easier access
   prodInput.setAttribute('data-projected-total', projectedTotal);
+  prodInput.setAttribute('data-projected-itd', projectedITD);
   itdInput.setAttribute('data-projected-itd', projectedITD);
+  itdInput.setAttribute('data-has-projection', 'true');
 
   // Show visual indicators
   showProjectionBadge(root);
@@ -401,31 +450,58 @@ export async function mount(root){
   root.querySelector('#btn').addEventListener('click', async () => {
     const prodInput = root.querySelector('#prod');
     const itdInput = root.querySelector('#itd');
+    const dateInput = root.querySelector('#date');
 
     // Check if we have projected values
     const hasProjection = prodInput.hasAttribute('data-projected-total');
 
-    const date = root.querySelector('#date').value;
-    const itd  = hasProjection
-      ? prodInput.getAttribute('data-projected-itd')
-      : itdInput.value;
-    const prod = hasProjection
-      ? prodInput.getAttribute('data-projected-total')
-      : prodInput.value;
+    // Get RAW form data (what user entered)
+    const rawFormData = {
+      date: dateInput.value,
+      itd: itdInput.value,
+      prod: prodInput.value
+    };
+
+    // Get the values that will actually be submitted
+    const submissionData = {
+      date: dateInput.value,
+      itd: hasProjection
+        ? prodInput.getAttribute('data-projected-itd')
+        : itdInput.value,
+      prod: hasProjection
+        ? prodInput.getAttribute('data-projected-total')
+        : prodInput.value
+    };
 
     const feedbackContainer = root.querySelector('#feedback-container');
 
     // Clear any previous validation errors
     clearValidationErrors(root);
 
-    console.log('Using projection:', hasProjection);
+    // Debug logging
+    console.log('=== VALIDATION & SUBMISSION DEBUG ===');
+    console.log('Raw input values:', rawFormData);
+    console.log('Has projection:', hasProjection);
 
-    // Validate and format data
-    const { errors, formatted } = validateAndFormatData({ date, itd, prod });
+    if (hasProjection) {
+      console.log('Projected values:', {
+        itd: prodInput.getAttribute('data-projected-itd'),
+        prod: prodInput.getAttribute('data-projected-total')
+      });
+    }
+
+    console.log('Validating with projection:', hasProjection);
+
+    // Validate the VALUES THAT WILL BE SUBMITTED (projected if available)
+    const { errors, formatted } = validateAndFormatData(submissionData, hasProjection, root);
+
+    console.log('Validation errors:', errors);
+    console.log('Final submission data:', formatted);
+    console.log('=====================================');
 
     if (errors.length > 0) {
       // Show inline validation errors
-      displayValidationErrors(root, errors);
+      displayValidationErrors(root, errors, hasProjection);
 
       // Show validation errors using the feedback component
       renderFeedback(feedbackContainer, JSON.stringify({
