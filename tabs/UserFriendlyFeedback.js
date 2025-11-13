@@ -19,10 +19,11 @@ const FIELD_LABELS = {
  */
 const ERROR_TRANSLATIONS = {
   invalid: 'Invalid value entered',
-  'Invalid NUMERIC value': 'Must be a valid number',
-  'Cannot convert value to integer': 'Must be a whole number',
+  'Invalid NUMERIC value': 'Value has too many decimal places (max 3 allowed)',
+  'Cannot convert value to integer': 'Must be a whole number (no decimals allowed)',
   'required': 'This field is required',
-  'out of range': 'Value is out of acceptable range'
+  'out of range': 'Value is out of acceptable range',
+  'stopped': 'Submission stopped due to errors'
 };
 
 /**
@@ -46,26 +47,51 @@ function parseResponse(responseText) {
       };
     }
 
-    // Check for errors
-    if (parsed.errors || parsed.error) {
+    // Check for errors - handle both array and string formats
+    if (parsed.errors) {
       return {
         type: 'error',
-        errors: parsed.errors || [parsed.error],
+        errors: Array.isArray(parsed.errors) ? parsed.errors : [parsed.errors],
         message: parsed.message || 'Errors found in submission'
       };
     }
 
-    // Check for BigQuery insert errors pattern
-    if (responseText.includes('BigQuery insert errors')) {
-      const match = responseText.match(/BigQuery insert errors:\s*(\[.*\])/);
-      if (match) {
-        const errors = JSON.parse(match[1]);
-        return {
-          type: 'error',
-          errors: errors,
-          message: 'Data validation errors found'
-        };
+    // Check for error string that contains BigQuery insert errors
+    if (parsed.error && typeof parsed.error === 'string') {
+      // Check for BigQuery insert errors pattern in the error string
+      if (parsed.error.includes('BigQuery insert errors:')) {
+        try {
+          // Extract the JSON array from the error string
+          // Format: "BigQuery insert errors: [{...}]"
+          const jsonStart = parsed.error.indexOf('[');
+          const jsonEnd = parsed.error.lastIndexOf(']') + 1;
+
+          if (jsonStart !== -1 && jsonEnd > jsonStart) {
+            const jsonString = parsed.error.substring(jsonStart, jsonEnd);
+            console.log('Extracted JSON string from error:', jsonString);
+
+            // Parse the escaped JSON
+            const errorArray = JSON.parse(jsonString);
+            console.log('Parsed BigQuery error array:', errorArray);
+
+            return {
+              type: 'error',
+              errors: errorArray,
+              message: 'Data validation errors found'
+            };
+          }
+        } catch (parseError) {
+          console.error('Failed to parse BigQuery errors:', parseError);
+          // Fall through to return generic error
+        }
       }
+
+      // Generic error string
+      return {
+        type: 'error',
+        errors: [{ message: parsed.error }],
+        message: 'Errors found in submission'
+      };
     }
 
     // If we can't determine the type, treat as success if no errors
@@ -111,27 +137,38 @@ function aggregateErrors(errors) {
     return aggregated;
   }
 
+  // Flatten errors from BigQuery format
+  const flattenedErrors = [];
   errors.forEach(error => {
     if (error.errors && Array.isArray(error.errors)) {
+      // BigQuery format: each entry has an errors array
       error.errors.forEach(err => {
-        const field = err.field || err.location || 'unknown';
-        const reason = err.reason || err.message || 'Unknown error';
-        const key = `${field}::${reason}`;
-
-        if (!aggregated[key]) {
-          aggregated[key] = {
-            field,
-            reason,
-            count: 0,
-            examples: []
-          };
-        }
-
-        aggregated[key].count++;
-        if (aggregated[key].examples.length < 3) {
-          aggregated[key].examples.push(error.index || aggregated[key].count);
-        }
+        flattenedErrors.push(err);
       });
+    } else if (error.location || error.reason || error.message) {
+      // Direct error format
+      flattenedErrors.push(error);
+    }
+  });
+
+  // Aggregate flattened errors
+  flattenedErrors.forEach(err => {
+    const field = err.field || err.location || 'unknown';
+    const reason = err.reason || err.message || 'Unknown error';
+    const key = `${field}::${reason}`;
+
+    if (!aggregated[key]) {
+      aggregated[key] = {
+        field,
+        reason,
+        count: 0,
+        examples: []
+      };
+    }
+
+    aggregated[key].count++;
+    if (aggregated[key].examples.length < 3) {
+      aggregated[key].examples.push(aggregated[key].count);
     }
   });
 
@@ -223,11 +260,11 @@ export function renderFeedback(container, responseText, submittedData = null) {
               ${errorItems}
             </ul>
             <div class="user-feedback-tips">
-              <p class="user-feedback-tips-title">Tips:</p>
+              <p class="user-feedback-tips-title">💡 How to fix:</p>
               <ul class="user-feedback-tips-list">
-                <li>Check that all fields are filled in correctly</li>
-                <li>Make sure numeric values don't have letters or special characters</li>
-                <li>Date should be in the correct format (YYYY-MM-DD)</li>
+                <li><strong>Production:</strong> Enter numbers with max 3 decimals (e.g., 16.426, not 16.4268)</li>
+                <li><strong>ITD:</strong> Enter whole numbers only (e.g., 126753, not 126753.39)</li>
+                <li><strong>Tip:</strong> Values are automatically rounded to correct precision</li>
               </ul>
             </div>
           </div>
