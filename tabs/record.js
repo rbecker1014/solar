@@ -1,5 +1,54 @@
 import { renderFeedback, injectStyles } from './UserFriendlyFeedback.js';
 
+/**
+ * Validates and formats form data before submission
+ * @param {Object} formData - Raw form data { date, itd, prod }
+ * @returns {Object} - { errors: Array, formatted: Object }
+ */
+function validateAndFormatData(formData) {
+  const errors = [];
+  const formatted = { ...formData };
+
+  // Validate Date
+  if (!formData.date) {
+    errors.push({ field: 'date', message: 'Date is required' });
+  }
+
+  // Validate and format Production (max 3 decimals)
+  if (formData.prod) {
+    const prodNum = parseFloat(formData.prod);
+    if (isNaN(prodNum)) {
+      errors.push({ field: 'prod', message: 'Production must be a number' });
+    } else if (prodNum < 0) {
+      errors.push({ field: 'prod', message: 'Production cannot be negative' });
+    } else {
+      // Round to 3 decimal places
+      formatted.prod = parseFloat(prodNum.toFixed(3));
+    }
+  } else {
+    errors.push({ field: 'prod', message: 'Production is required' });
+  }
+
+  // Validate and format ITD (must be whole number)
+  if (formData.itd) {
+    const itdNum = parseFloat(formData.itd);
+    if (isNaN(itdNum)) {
+      errors.push({ field: 'itd', message: 'ITD must be a number' });
+    } else if (itdNum < 0) {
+      errors.push({ field: 'itd', message: 'ITD cannot be negative' });
+    } else if (!Number.isInteger(itdNum)) {
+      // Round to nearest integer
+      formatted.itd = Math.round(itdNum);
+    } else {
+      formatted.itd = itdNum;
+    }
+  } else {
+    errors.push({ field: 'itd', message: 'ITD is required' });
+  }
+
+  return { errors, formatted };
+}
+
 export async function mount(root){
   // Inject feedback component styles
   injectStyles();
@@ -14,8 +63,8 @@ export async function mount(root){
         <div id="status" class="text-sm text-emerald-700 mb-4">Status: idle</div>
         <div class="grid sm:grid-cols-3 gap-4">
           <label class="block"><span class="text-sm text-gray-700">Date</span><input id="date" type="date" class="input" required></label>
-          <label class="block"><span class="text-sm text-gray-700">ITD</span><input id="itd" type="number" step="any" class="input" required placeholder="12345"></label>
-          <label class="block"><span class="text-sm text-gray-700">Prod</span><input id="prod" type="number" step="any" class="input" required placeholder="50"></label>
+          <label class="block"><span class="text-sm text-gray-700">ITD</span><input id="itd" type="number" step="1" min="0" class="input" required placeholder="126753"></label>
+          <label class="block"><span class="text-sm text-gray-700">Prod</span><input id="prod" type="number" step="0.001" min="0" class="input" required placeholder="16.426"></label>
         </div>
         <button id="btn" type="button" class="mt-4 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Submit</button>
       </div>
@@ -57,19 +106,47 @@ export async function mount(root){
     const itd  = root.querySelector('#itd').value;
     const prod = root.querySelector('#prod').value;
 
-    if (!date || !itd || !prod) {
-      alert('Please fill all fields');
+    const feedbackContainer = root.querySelector('#feedback-container');
+
+    // Validate and format data
+    const { errors, formatted } = validateAndFormatData({ date, itd, prod });
+
+    if (errors.length > 0) {
+      // Show validation errors using the feedback component
+      renderFeedback(feedbackContainer, JSON.stringify({
+        ok: false,
+        errors: errors.map(err => ({
+          errors: [{
+            location: err.field,
+            reason: 'invalid',
+            message: err.message
+          }]
+        }))
+      }));
+      root.querySelector('#status').textContent = "Validation failed";
       return;
     }
 
     root.querySelector('#status').textContent = "Submitting…";
 
     // Clear previous feedback
-    const feedbackContainer = root.querySelector('#feedback-container');
     feedbackContainer.innerHTML = '';
 
-    const body = new URLSearchParams({ token: TOKEN, date, itd, prod }).toString();
-    const submittedData = { date, itd, prod };
+    // Use formatted data for submission
+    const body = new URLSearchParams({
+      token: TOKEN,
+      date: formatted.date,
+      itd: formatted.itd,
+      prod: formatted.prod
+    }).toString();
+
+    const submittedData = {
+      date: formatted.date,
+      itd: formatted.itd,
+      prod: formatted.prod
+    };
+
+    console.log('Submitting formatted data:', submittedData);
 
     try {
       const res  = await fetch(ENDPOINT, {
@@ -79,18 +156,31 @@ export async function mount(root){
       });
       const text = await res.text();
 
+      console.log('API Response:', text);
+
       // Render user-friendly feedback
       renderFeedback(feedbackContainer, text, submittedData);
 
       root.querySelector('#status').textContent = "Submitted OK";
+
+      // Clear form on success
+      const responseObj = typeof text === 'string' ? JSON.parse(text) : text;
+      if (responseObj.ok === true) {
+        root.querySelector('#date').value = '';
+        root.querySelector('#itd').value = '';
+        root.querySelector('#prod').value = '';
+      }
+
       await refreshLatest();
     } catch (e) {
       root.querySelector('#status').textContent = "Submit failed";
 
+      console.error('Submit error:', e);
+
       // Render error feedback
       renderFeedback(feedbackContainer, JSON.stringify({
-        error: true,
-        message: `Network error: ${e.message}`
+        ok: false,
+        error: `Network error: ${e.message}`
       }));
     }
   });
