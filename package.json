@@ -1,0 +1,21 @@
+{
+  "name": "solar",
+  "version": "1.0.0",
+  "description": "This project records daily solar production data into BigQuery via a Google Apps Script Web App. It replaces the old Excel-based workflow with a simple, token-protected HTTP API and static web client.",
+  "main": "app.core.js",
+  "scripts": {
+    "build:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --minify",
+    "watch:css": "tailwindcss -i ./src/input.css -o ./dist/output.css --watch",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "http://local_proxy@127.0.0.1:56167/git/rbecker1014/solar"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "tailwindcss": "^3.4.18"
+  }
+}
