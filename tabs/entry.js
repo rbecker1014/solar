@@ -38,7 +38,8 @@ function buildExtrapolatedRows(valuesABC, inputDateStr, inputITD, inputProd){
   const gapDays = daysBetweenParts(lastParts, inputParts);
   if (gapDays < 1) throw new Error('Input date must be after the last recorded date.');
   if (gapDays === 1){
-    return [[ ymdToString(inputParts), Math.round(Number(inputITD)), Math.round(Number(inputProd) * 10) / 10 ]];
+    // Single day gap - use exact user input values
+    return [[ ymdToString(inputParts), Math.round(Number(inputITD)), parseFloat(Number(inputProd).toFixed(3)) ]];
   }
   const missingCount = gapDays - 1;
   const deltaITD = Number(inputITD) - lastITD;
@@ -49,20 +50,21 @@ function buildExtrapolatedRows(valuesABC, inputDateStr, inputITD, inputProd){
   if (missingSum < -1e-9){
     throw new Error('Numbers inconsistent: input ITD is less than last ITD plus Prod.');
   }
-  const even = missingCount > 0 ? missingSum / missingCount : 0;
+  // Calculate average daily production and round to 3 decimals immediately
+  const avgDailyProduction = missingCount > 0 ? parseFloat((missingSum / missingCount).toFixed(3)) : 0;
   const rows = [];
-  let runningITD = lastITD;
-  let allocated = 0;
+  let cumulativeITD = lastITD;
+
+  // Create interpolated records for missing days
   for (let i = 1; i <= missingCount; i++){
-    let prod = i < missingCount ? even : (missingSum - allocated);
-    if (Math.abs(prod) < 1e-12) prod = 0;
-    prod = Math.round(prod * 10) / 10;  // Round to 1 decimal place
-    runningITD += prod;
+    cumulativeITD += avgDailyProduction;
+    const roundedITD = Math.round(cumulativeITD);
     const parts = addDaysParts(lastParts, i);
-    rows.push([ ymdToString(parts), Math.round(runningITD), prod ]);
-    allocated += prod;
+    rows.push([ ymdToString(parts), roundedITD, avgDailyProduction ]);
   }
-  rows.push([ ymdToString(inputParts), Math.round(Number(inputITD)), Math.round(Number(inputProd) * 10) / 10 ]);
+
+  // Final record uses exact user input to avoid cumulative rounding errors
+  rows.push([ ymdToString(inputParts), Math.round(Number(inputITD)), parseFloat(Number(inputProd).toFixed(3)) ]);
   return rows;
 }
 
