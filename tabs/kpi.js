@@ -208,6 +208,21 @@ function formatDeltaDetail({ delta = 0, previous = 0 }, label){
 
 async function loadKPIs(ctx){
   try{
+    // Defensive check: ensure $root exists
+    if (!$root){
+      console.warn('KPI loadKPIs called but $root is null - tab may not be mounted yet');
+      return;
+    }
+
+    // Check if KPI container is still in the DOM
+    const kpiRoot = $root.querySelector('[data-kpi-root]');
+    if (!kpiRoot){
+      console.warn('KPI container not found in DOM - tab may have been unmounted');
+      return;
+    }
+
+    console.log('Loading KPIs...');
+
     await Promise.all([
       ensureDailyDataLoaded(ctx?.state),
       ensureFullDailyDataLoaded(ctx?.state),
@@ -215,43 +230,62 @@ async function loadKPIs(ctx){
     ]);
     const metrics = selectKpiMetrics(ctx?.state);
 
-    // Paint
-    $root.querySelector('#kpiWeekToDate').textContent      = fmtKWh(metrics.weekToDate.value);
-    $root.querySelector('#kpiMonthToDate').textContent     = fmtKWh(metrics.monthToDate.value);
-    $root.querySelector('#kpiPrevWeekChange').textContent  = formatDeltaPercent(metrics.weekToDate.delta, metrics.weekToDate.previous);
-    $root.querySelector('#kpiPrevWeekTotal').textContent   = `PWTD ${fmtKWh(metrics.weekToDate.previous)}`;
-    $root.querySelector('#kpiPrevMonthChange').textContent = formatDeltaPercent(metrics.monthToDate.delta, metrics.monthToDate.previous);
-    $root.querySelector('#kpiPrevMonthTotal').textContent  = `PMTD ${fmtKWh(metrics.monthToDate.previous)}`;
-    $root.querySelector('#kpiUsage').textContent            = fmtKWh(metrics.totalUse);
-    $root.querySelector('#kpiYtdSolar').textContent         = fmtKWh(metrics.yearToDate.value);
-    $root.querySelector('#kpiPrevYearChange').textContent   = formatDeltaPercent(metrics.yearToDate.delta, metrics.yearToDate.previous);
-    $root.querySelector('#kpiPrevYearTotal').textContent    = `PYTD ${fmtKWh(metrics.yearToDate.previous)}`;
-    $root.querySelector('#kpiYearToDateDetail').textContent = formatDeltaDetail(metrics.yearToDate, 'PYTD');
-    $root.querySelector('#kpiImport').textContent           = fmtKWh(metrics.totalImp);
-    $root.querySelector('#kpiExport').textContent           = fmtKWh(metrics.totalExp);
-    $root.querySelector('#kpiSelfSufficiency').textContent  = fmtPct(metrics.selfSufficiency);
-    $root.querySelector('#kpiAvgDailyUse').textContent      = fmtKWh(metrics.avgDailyUse);
-    $root.querySelector('#kpiAvgDailyProd').textContent     = fmtKWh(metrics.avgDailyProd);
-    $root.querySelector('#kpiWeekToDateDetail').textContent   = formatDeltaDetail(metrics.weekToDate, 'PWTD');
-    $root.querySelector('#kpiWeekToDateRows').textContent     = formatRowUsage(metrics.weekToDate);
-    $root.querySelector('#kpiMonthToDateDetail').textContent  = formatDeltaDetail(metrics.monthToDate, 'PMTD');
-    $root.querySelector('#kpiWeekRange').textContent          = formatCoverageRange(metrics.weekToDate);
-    $root.querySelector('#kpiMonthRange').textContent         = formatCoverageRange(metrics.monthToDate);
-    $root.querySelector('#kpiYearRange').textContent          = formatCoverageRange(metrics.yearToDate);
+    // Helper function to safely update DOM elements
+    const safeUpdate = (selector, value) => {
+      const element = $root.querySelector(selector);
+      if (element){
+        element.textContent = value;
+      }else{
+        console.warn(`KPI element not found: ${selector}`);
+      }
+    };
 
+    // Safely paint all KPI values
+    safeUpdate('#kpiWeekToDate', fmtKWh(metrics.weekToDate.value));
+    safeUpdate('#kpiMonthToDate', fmtKWh(metrics.monthToDate.value));
+    safeUpdate('#kpiPrevWeekChange', formatDeltaPercent(metrics.weekToDate.delta, metrics.weekToDate.previous));
+    safeUpdate('#kpiPrevWeekTotal', `PWTD ${fmtKWh(metrics.weekToDate.previous)}`);
+    safeUpdate('#kpiPrevMonthChange', formatDeltaPercent(metrics.monthToDate.delta, metrics.monthToDate.previous));
+    safeUpdate('#kpiPrevMonthTotal', `PMTD ${fmtKWh(metrics.monthToDate.previous)}`);
+    safeUpdate('#kpiUsage', fmtKWh(metrics.totalUse));
+    safeUpdate('#kpiYtdSolar', fmtKWh(metrics.yearToDate.value));
+    safeUpdate('#kpiPrevYearChange', formatDeltaPercent(metrics.yearToDate.delta, metrics.yearToDate.previous));
+    safeUpdate('#kpiPrevYearTotal', `PYTD ${fmtKWh(metrics.yearToDate.previous)}`);
+    safeUpdate('#kpiYearToDateDetail', formatDeltaDetail(metrics.yearToDate, 'PYTD'));
+    safeUpdate('#kpiImport', fmtKWh(metrics.totalImp));
+    safeUpdate('#kpiExport', fmtKWh(metrics.totalExp));
+    safeUpdate('#kpiSelfSufficiency', fmtPct(metrics.selfSufficiency));
+    safeUpdate('#kpiAvgDailyUse', fmtKWh(metrics.avgDailyUse));
+    safeUpdate('#kpiAvgDailyProd', fmtKWh(metrics.avgDailyProd));
+    safeUpdate('#kpiWeekToDateDetail', formatDeltaDetail(metrics.weekToDate, 'PWTD'));
+    safeUpdate('#kpiWeekToDateRows', formatRowUsage(metrics.weekToDate));
+    safeUpdate('#kpiMonthToDateDetail', formatDeltaDetail(metrics.monthToDate, 'PMTD'));
+    safeUpdate('#kpiWeekRange', formatCoverageRange(metrics.weekToDate));
+    safeUpdate('#kpiMonthRange', formatCoverageRange(metrics.monthToDate));
+    safeUpdate('#kpiYearRange', formatCoverageRange(metrics.yearToDate));
+
+    // Handle top production day with null checks
     const top = metrics.topProductionDay;
     const topValueEl = $root.querySelector('#kpiTopProdValue');
     const topDetailEl = $root.querySelector('#kpiTopProdDetail');
-    if (top?.date){
-      topValueEl.textContent = fmtKWh(top.solarKWh);
-      const bits = [fmtDate(top.date)].filter(Boolean);
-      bits.push(`Usage ${fmtKWh(top.homeKWh)}`);
-      bits.push(`Export ${fmtKWh(top.gridExport)}`);
-      topDetailEl.textContent = bits.join(' · ');
+
+    if (topValueEl && topDetailEl){
+      if (top?.date){
+        topValueEl.textContent = fmtKWh(top.solarKWh);
+        const bits = [fmtDate(top.date)].filter(Boolean);
+        bits.push(`Usage ${fmtKWh(top.homeKWh)}`);
+        bits.push(`Export ${fmtKWh(top.gridExport)}`);
+        topDetailEl.textContent = bits.join(' · ');
+      }else{
+        topValueEl.textContent = fmtKWh(0);
+        topDetailEl.textContent = 'No production data';
+      }
     }else{
-      topValueEl.textContent = fmtKWh(0);
-      topDetailEl.textContent = 'No production data';
+      if (!topValueEl) console.warn('KPI element not found: #kpiTopProdValue');
+      if (!topDetailEl) console.warn('KPI element not found: #kpiTopProdDetail');
     }
+
+    console.log('KPIs loaded successfully');
 
     if (!hasAnnouncedReady){
       hasAnnouncedReady = true;
@@ -262,10 +296,27 @@ async function loadKPIs(ctx){
       );
     }
   }catch(err){
-    console.error('kpi error:', err);
-    const el = document.createElement('div');
-    el.className = 'text-sm text-red-600';
-    el.textContent = `KPI error: ${err.message}`;
-    $root.appendChild(el);
+    console.error('KPI load error:', err);
+    console.error('Error stack:', err.stack);
+
+    // Only try to show error UI if $root exists
+    if ($root){
+      const existingError = $root.querySelector('[data-kpi-error]');
+      if (existingError){
+        existingError.remove();
+      }
+
+      const el = document.createElement('div');
+      el.className = 'card text-sm text-red-600 mt-4';
+      el.setAttribute('data-kpi-error', 'true');
+      el.innerHTML = `
+        <div class="font-semibold mb-1">Unable to load KPI statistics</div>
+        <div class="text-xs">${err.message || 'An unexpected error occurred'}</div>
+        <div class="text-xs mt-2 text-slate-500">Please refresh the page or try switching tabs.</div>
+      `;
+      $root.appendChild(el);
+    }else{
+      console.error('Cannot display error UI: $root is null');
+    }
   }
 }
