@@ -1,4 +1,9 @@
+import { renderFeedback, injectStyles } from './UserFriendlyFeedback.js';
+
 export async function mount(root){
+  // Inject feedback component styles
+  injectStyles();
+
   root.innerHTML = `
     <section class="space-y-3">
       <div class="card">
@@ -15,19 +20,14 @@ export async function mount(root){
         <button id="btn" type="button" class="mt-4 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Submit</button>
       </div>
       <div class="card">
-        <h3 class="text-lg font-semibold mb-2">Log</h3>
-        <pre id="log" class="mono text-xs whitespace-pre-wrap bg-gray-100 p-2 rounded border border-gray-200"></pre>
+        <h3 class="text-lg font-semibold mb-2">Submission Feedback</h3>
+        <div id="feedback-container"></div>
       </div>
     </section>
   `;
 
   const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
   const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
-
-  const log = m => {
-    const el = root.querySelector('#log');
-    el.textContent += (typeof m==='string' ? m : JSON.stringify(m)) + "\n";
-  };
 
   async function refreshLatest(){
     try {
@@ -45,12 +45,10 @@ export async function mount(root){
         latestItdEl.textContent  = 'ITD Production: none';
         latestProdEl.textContent = 'Production: none';
       }
-      log('GET latest: ' + JSON.stringify(j));
     } catch (e) {
       root.querySelector('#latest-date').textContent = 'Error fetching latest';
       root.querySelector('#latest-itd').textContent  = '';
       root.querySelector('#latest-prod').textContent = '';
-      log('GET error: ' + e.message);
     }
   }
 
@@ -66,7 +64,13 @@ export async function mount(root){
 
     root.querySelector('#status').textContent = "Submitting…";
 
+    // Clear previous feedback
+    const feedbackContainer = root.querySelector('#feedback-container');
+    feedbackContainer.innerHTML = '';
+
     const body = new URLSearchParams({ token: TOKEN, date, itd, prod }).toString();
+    const submittedData = { date, itd, prod };
+
     try {
       const res  = await fetch(ENDPOINT, {
         method: 'POST',
@@ -74,13 +78,20 @@ export async function mount(root){
         body
       });
       const text = await res.text();
-      log('POST response: ' + text);
+
+      // Render user-friendly feedback
+      renderFeedback(feedbackContainer, text, submittedData);
 
       root.querySelector('#status').textContent = "Submitted OK";
       await refreshLatest();
     } catch (e) {
       root.querySelector('#status').textContent = "Submit failed";
-      log('POST error: ' + e.message);
+
+      // Render error feedback
+      renderFeedback(feedbackContainer, JSON.stringify({
+        error: true,
+        message: `Network error: ${e.message}`
+      }));
     }
   });
 
