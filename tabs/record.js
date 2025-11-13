@@ -1,5 +1,66 @@
 import { renderFeedback, injectStyles } from './UserFriendlyFeedback.js';
 
+// Solar configuration - adjust for your location
+const SOLAR_CONFIG = {
+  // Simple mode: fixed hours
+  sunriseHour: 6,    // 6 AM
+  sunsetHour: 18,    // 6 PM
+
+  // Advanced: Use actual location (implement later)
+  // latitude: 33.0,
+  // longitude: -117.0,
+  // useActualSunTimes: false
+};
+
+// Solar day calculation helpers
+function getSunriseSunset(date) {
+  // Simplified calculation - you can make this more accurate with lat/long later
+  // For now, assume sunrise at 6 AM and sunset at 6 PM (12 hours of daylight)
+  // TODO: Use actual sunrise/sunset API or library for user's location
+
+  const sunrise = new Date(date);
+  sunrise.setHours(SOLAR_CONFIG.sunriseHour, 0, 0, 0);
+
+  const sunset = new Date(date);
+  sunset.setHours(SOLAR_CONFIG.sunsetHour, 0, 0, 0);
+
+  return { sunrise, sunset };
+}
+
+function isDaylightHours(date) {
+  const { sunrise, sunset } = getSunriseSunset(date);
+  return date >= sunrise && date <= sunset;
+}
+
+function getHoursOfDaylightElapsed(date) {
+  const { sunrise, sunset } = getSunriseSunset(date);
+
+  if (date < sunrise) return 0;
+  if (date > sunset) return 12; // Full day elapsed
+
+  const elapsed = (date - sunrise) / (1000 * 60 * 60); // Hours
+  return Math.max(0, Math.min(12, elapsed));
+}
+
+function getHoursOfDaylightRemaining(date) {
+  const totalDaylight = 12; // Hours (sunrise to sunset)
+  const elapsed = getHoursOfDaylightElapsed(date);
+  return Math.max(0, totalDaylight - elapsed);
+}
+
+function calculateProjectedProduction(currentProduction, hoursElapsed, hoursRemaining) {
+  if (hoursElapsed <= 0) return 0; // No data yet
+  if (hoursRemaining <= 0) return 0; // Day is over
+
+  // Calculate hourly rate based on what's been produced so far
+  const hourlyRate = currentProduction / hoursElapsed;
+
+  // Project remaining production
+  const projectedRemaining = hourlyRate * hoursRemaining;
+
+  return projectedRemaining;
+}
+
 /**
  * Updates the time display every second
  */
@@ -140,6 +201,134 @@ function clearValidationErrors(root) {
   });
 }
 
+/**
+ * Shows visual indicators that projected values are being used
+ * @param {HTMLElement} root - The root element
+ */
+function showProjectionBadge(root) {
+  const prodInput = root.querySelector('#prod');
+  const itdInput = root.querySelector('#itd');
+
+  // Add visual indicator that these are projected values
+  [prodInput, itdInput].forEach(input => {
+    if (input) {
+      input.style.backgroundColor = '#fff3cd';
+      input.style.fontWeight = '600';
+    }
+  });
+}
+
+/**
+ * Clears visual indicators for projected values
+ * @param {HTMLElement} root - The root element
+ */
+function clearProjectionBadge(root) {
+  const prodInput = root.querySelector('#prod');
+  const itdInput = root.querySelector('#itd');
+
+  [prodInput, itdInput].forEach(input => {
+    if (input) {
+      input.style.backgroundColor = '';
+      input.style.fontWeight = '';
+    }
+  });
+}
+
+/**
+ * Updates the production projection display
+ * @param {HTMLElement} root - The root element
+ */
+function updateProductionProjection(root) {
+  const prodInput = root.querySelector('#prod');
+  const itdInput = root.querySelector('#itd');
+  const projectionSection = root.querySelector('#projection-section');
+  const projectionDetails = root.querySelector('#projection-details');
+  const projectionHelp = root.querySelector('#projection-help');
+
+  if (!prodInput || !itdInput || !projectionSection || !projectionDetails) return;
+
+  const currentProduction = parseFloat(prodInput.value);
+  const currentITD = parseFloat(itdInput.value);
+
+  // Only show projection if we have valid numbers
+  if (isNaN(currentProduction) || isNaN(currentITD) || currentProduction <= 0) {
+    projectionSection.style.display = 'none';
+    if (projectionHelp) projectionHelp.style.display = 'none';
+    clearProjectionBadge(root);
+    return;
+  }
+
+  const now = new Date();
+
+  // Check if we're in daylight hours
+  if (!isDaylightHours(now)) {
+    projectionSection.style.display = 'none';
+    if (projectionHelp) projectionHelp.style.display = 'none';
+    clearProjectionBadge(root);
+    return;
+  }
+
+  const hoursElapsed = getHoursOfDaylightElapsed(now);
+  const hoursRemaining = getHoursOfDaylightRemaining(now);
+
+  // If day is over or just started, don't project
+  if (hoursRemaining < 0.5 || hoursElapsed < 0.5) {
+    projectionSection.style.display = 'none';
+    if (projectionHelp) projectionHelp.style.display = 'none';
+    clearProjectionBadge(root);
+    return;
+  }
+
+  const projectedRemaining = calculateProjectedProduction(
+    currentProduction,
+    hoursElapsed,
+    hoursRemaining
+  );
+
+  // Round to 3 decimals
+  const roundedProjection = Math.round(projectedRemaining * 1000) / 1000;
+  const projectedTotal = Math.round((currentProduction + projectedRemaining) * 1000) / 1000;
+  const projectedITD = Math.round(currentITD + projectedRemaining);
+
+  // Show the projection
+  projectionSection.style.display = 'block';
+  if (projectionHelp) projectionHelp.style.display = 'block';
+  projectionDetails.innerHTML = `
+    <div style="margin-bottom: 6px;">
+      <strong>Current time:</strong> ${now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
+    </div>
+    <div style="margin-bottom: 6px;">
+      <strong>Daylight elapsed:</strong> ${hoursElapsed.toFixed(1)} hours
+    </div>
+    <div style="margin-bottom: 6px;">
+      <strong>Daylight remaining:</strong> ${hoursRemaining.toFixed(1)} hours
+    </div>
+    <div style="margin-bottom: 6px;">
+      <strong>Hourly rate:</strong> ${(currentProduction / hoursElapsed).toFixed(3)} kWh/hour
+    </div>
+    <hr style="margin: 8px 0; border: none; border-top: 1px solid #856404; opacity: 0.3;">
+    <div style="margin-bottom: 6px;">
+      <strong>Estimated remaining:</strong> +${roundedProjection} kWh
+    </div>
+    <div style="margin-bottom: 6px; font-size: 16px;">
+      <strong>Projected daily total:</strong> ${projectedTotal} kWh
+    </div>
+    <div style="font-size: 16px;">
+      <strong>Projected ITD:</strong> ${projectedITD.toLocaleString()}
+    </div>
+    <div style="margin-top: 8px; font-size: 13px; font-style: italic;">
+      💡 These projected values will be submitted to the database
+    </div>
+  `;
+
+  // Store projection in data attributes for submission
+  prodInput.setAttribute('data-projected-total', projectedTotal);
+  itdInput.setAttribute('data-projected-itd', projectedITD);
+
+  // Show visual indicators
+  showProjectionBadge(root);
+}
+
 export async function mount(root){
   // Inject feedback component styles
   injectStyles();
@@ -159,6 +348,20 @@ export async function mount(root){
           <label class="block"><span class="text-sm text-gray-700">Date</span><input id="date" type="date" class="input" required></label>
           <label class="block"><span class="text-sm text-gray-700">ITD</span><input id="itd" type="number" step="1" min="0" class="input" required placeholder="126753"></label>
           <label class="block"><span class="text-sm text-gray-700">Prod</span><input id="prod" type="number" step="0.001" min="0" class="input" required placeholder="16.426"></label>
+        </div>
+        <!-- Projection Display Section -->
+        <div id="projection-section" style="display: none; margin-top: 16px; padding: 12px; background-color: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+          <div style="font-weight: 600; margin-bottom: 8px; color: #856404;">
+            📊 Mid-Day Projection
+          </div>
+          <div id="projection-details" style="font-size: 14px; color: #856404;">
+            <!-- Projection details will be inserted here -->
+          </div>
+        </div>
+        <div style="font-size: 13px; color: #666; margin-top: 12px; display: none;" id="projection-help">
+          <strong>ℹ️ How it works:</strong> When you enter data during the day,
+          we calculate your current production rate and project what you'll produce
+          by sunset. This gives you a complete daily total in the database.
         </div>
         <button id="btn" type="button" class="mt-4 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Submit</button>
       </div>
@@ -196,14 +399,26 @@ export async function mount(root){
   }
 
   root.querySelector('#btn').addEventListener('click', async () => {
+    const prodInput = root.querySelector('#prod');
+    const itdInput = root.querySelector('#itd');
+
+    // Check if we have projected values
+    const hasProjection = prodInput.hasAttribute('data-projected-total');
+
     const date = root.querySelector('#date').value;
-    const itd  = root.querySelector('#itd').value;
-    const prod = root.querySelector('#prod').value;
+    const itd  = hasProjection
+      ? prodInput.getAttribute('data-projected-itd')
+      : itdInput.value;
+    const prod = hasProjection
+      ? prodInput.getAttribute('data-projected-total')
+      : prodInput.value;
 
     const feedbackContainer = root.querySelector('#feedback-container');
 
     // Clear any previous validation errors
     clearValidationErrors(root);
+
+    console.log('Using projection:', hasProjection);
 
     // Validate and format data
     const { errors, formatted } = validateAndFormatData({ date, itd, prod });
@@ -269,6 +484,23 @@ export async function mount(root){
         root.querySelector('#date').value = '';
         root.querySelector('#itd').value = '';
         root.querySelector('#prod').value = '';
+
+        // Clear projection data attributes
+        const prodInputClear = root.querySelector('#prod');
+        const itdInputClear = root.querySelector('#itd');
+        if (prodInputClear) {
+          prodInputClear.removeAttribute('data-projected-total');
+        }
+        if (itdInputClear) {
+          itdInputClear.removeAttribute('data-projected-itd');
+        }
+
+        // Hide projection section and clear visual indicators
+        const projectionSection = root.querySelector('#projection-section');
+        const projectionHelp = root.querySelector('#projection-help');
+        if (projectionSection) projectionSection.style.display = 'none';
+        if (projectionHelp) projectionHelp.style.display = 'none';
+        clearProjectionBadge(root);
       }
 
       await refreshLatest();
@@ -310,6 +542,21 @@ export async function mount(root){
       });
     }
   });
+
+  // Add projection update listeners
+  if (prodInput) {
+    prodInput.addEventListener('input', () => updateProductionProjection(root));
+  }
+
+  if (itdInput) {
+    itdInput.addEventListener('input', () => updateProductionProjection(root));
+  }
+
+  // Update projection every minute (in case time crosses threshold)
+  setInterval(() => updateProductionProjection(root), 60000);
+
+  // Initial projection update
+  updateProductionProjection(root);
 
   refreshLatest();
 }
