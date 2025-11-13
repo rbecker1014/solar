@@ -38,7 +38,7 @@ function buildExtrapolatedRows(valuesABC, inputDateStr, inputITD, inputProd){
   const gapDays = daysBetweenParts(lastParts, inputParts);
   if (gapDays < 1) throw new Error('Input date must be after the last recorded date.');
   if (gapDays === 1){
-    return [[ ymdToString(inputParts), Number(inputITD), Number(inputProd) ]];
+    return [[ ymdToString(inputParts), Math.round(Number(inputITD)), Math.round(Number(inputProd) * 10) / 10 ]];
   }
   const missingCount = gapDays - 1;
   const deltaITD = Number(inputITD) - lastITD;
@@ -56,12 +56,13 @@ function buildExtrapolatedRows(valuesABC, inputDateStr, inputITD, inputProd){
   for (let i = 1; i <= missingCount; i++){
     let prod = i < missingCount ? even : (missingSum - allocated);
     if (Math.abs(prod) < 1e-12) prod = 0;
+    prod = Math.round(prod * 10) / 10;  // Round to 1 decimal place
     runningITD += prod;
     const parts = addDaysParts(lastParts, i);
-    rows.push([ ymdToString(parts), Number(runningITD), Number(prod) ]);
+    rows.push([ ymdToString(parts), Math.round(runningITD), prod ]);
     allocated += prod;
   }
-  rows.push([ ymdToString(inputParts), Number(inputITD), Number(inputProd) ]);
+  rows.push([ ymdToString(inputParts), Math.round(Number(inputITD)), Math.round(Number(inputProd) * 10) / 10 ]);
   return rows;
 }
 
