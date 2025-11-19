@@ -1,0 +1,36 @@
+<!-- Add this to your solar website -->
+<div id="solar-chatbot">
+  <div id="chat-messages"></div>
+  <input id="chat-input" type="text" placeholder="Ask about your solar data...">
+  <button id="chat-send">Ask</button>
+</div>
+
+<script>
+const API_URL = 'https://solar-chatbot-656801194507.us-central1.run.app'; // Update this!
+
+document.getElementById('chat-send').onclick = async () => {
+  const input = document.getElementById('chat-input');
+  const msg = input.value.trim();
+  if (!msg) return;
+
+  // Show user message
+  addMessage('You', msg);
+  input.value = '';
+
+  // Get response
+  const res = await fetch(API_URL, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({message: msg})
+  });
+
+  const data = await res.json();
+  addMessage('Assistant', data.response);
+};
+
+function addMessage(sender, text) {
+  const div = document.createElement('div');
+  div.innerHTML = `<b>${sender}:</b> ${text}`;
+  document.getElementById('chat-messages').appendChild(div);
+}
+</script>
