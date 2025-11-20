@@ -313,136 +313,132 @@
     </div>
   </div>
   
-  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 
-  <script>
-    const API_URL = 'https://solar-chatbot-656801194507.us-central1.run.app/chat';
-    const chatMessages = document.getElementById('chat-messages');
-    const chatInput = document.getElementById('chat-input');
-    const chatSend = document.getElementById('chat-send');
+<script>
+  const API_URL = 'https://solar-chatbot-656801194507.us-central1.run.app/chat';
+  const chatMessages = document.getElementById('chat-messages');
+  const chatInput = document.getElementById('chat-input');
+  const chatSend = document.getElementById('chat-send');
+  
+  // Track conversation history
+  let conversationHistory = [];
 
-    // Remove empty state on first message
-    function removeEmptyState() {
-      const emptyState = chatMessages.querySelector('.empty-state');
-      if (emptyState) {
-        emptyState.remove();
-      }
+  function removeEmptyState() {
+    const emptyState = chatMessages.querySelector('.empty-state');
+    if (emptyState) {
+      emptyState.remove();
+    }
+  }
+
+  function addMessage(sender, text, isUser = false) {
+    removeEmptyState();
+
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.textContent = isUser ? 'U' : 'AI';
+
+    const content = document.createElement('div');
+    content.className = 'message-content';
+    
+    if (isUser) {
+      content.textContent = text;
+    } else {
+      content.innerHTML = marked.parse(text);
     }
 
-    // Add message to chat
-    function addMessage(sender, text, isUser = false) {
-      removeEmptyState();
+    messageDiv.appendChild(avatar);
+    messageDiv.appendChild(content);
 
-      const messageDiv = document.createElement('div');
-      messageDiv.className = `message ${isUser ? 'user-message' : 'assistant-message'}`;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
 
-      const avatar = document.createElement('div');
-      avatar.className = 'message-avatar';
-      avatar.textContent = isUser ? 'U' : 'AI';
+  function addLoadingIndicator() {
+    removeEmptyState();
 
-      const content = document.createElement('div');
-      content.className = 'message-content';
+    const loadingDiv = document.createElement('div');
+    loadingDiv.className = 'message assistant-message';
+    loadingDiv.id = 'loading-indicator';
+
+    const avatar = document.createElement('div');
+    avatar.className = 'message-avatar';
+    avatar.textContent = 'AI';
+
+    const content = document.createElement('div');
+    content.className = 'message-content loading-indicator';
+    content.innerHTML = '<div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>';
+
+    loadingDiv.appendChild(avatar);
+    loadingDiv.appendChild(content);
+
+    chatMessages.appendChild(loadingDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+  }
+
+  function removeLoadingIndicator() {
+    const loading = document.getElementById('loading-indicator');
+    if (loading) {
+      loading.remove();
+    }
+  }
+
+  async function sendMessage() {
+    const msg = chatInput.value.trim();
+    if (!msg) return;
+
+    chatInput.disabled = true;
+    chatSend.disabled = true;
+
+    addMessage('You', msg, true);
+    chatInput.value = '';
+
+    addLoadingIndicator();
+
+    try {
+      const res = await fetch(API_URL, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          message: msg,
+          conversation_history: conversationHistory
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error(`API error: ${res.status}`);
+      }
+
+      const data = await res.json();
+
+      removeLoadingIndicator();
+      addMessage('Assistant', data.response, false);
       
-      // Parse markdown to HTML for formatting
-      if (isUser) {
-        content.textContent = text;
-      } else {
-        content.innerHTML = marked.parse(text);
-      }
+      // Update conversation history from response
+      conversationHistory = data.conversation_history;
 
-      messageDiv.appendChild(avatar);
-      messageDiv.appendChild(content);
-
-      chatMessages.appendChild(messageDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+    } catch (error) {
+      console.error('Error:', error);
+      removeLoadingIndicator();
+      addMessage('Assistant', 'Sorry, I encountered an error. Please try again.', false);
+    } finally {
+      chatInput.disabled = false;
+      chatSend.disabled = false;
+      chatInput.focus();
     }
+  }
 
-    // Add loading indicator
-    function addLoadingIndicator() {
-      removeEmptyState();
-
-      const loadingDiv = document.createElement('div');
-      loadingDiv.className = 'message assistant-message';
-      loadingDiv.id = 'loading-indicator';
-
-      const avatar = document.createElement('div');
-      avatar.className = 'message-avatar';
-      avatar.textContent = 'AI';
-
-      const content = document.createElement('div');
-      content.className = 'message-content loading-indicator';
-      content.innerHTML = '<div class="loading-dot"></div><div class="loading-dot"></div><div class="loading-dot"></div>';
-
-      loadingDiv.appendChild(avatar);
-      loadingDiv.appendChild(content);
-
-      chatMessages.appendChild(loadingDiv);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
+  chatSend.addEventListener('click', sendMessage);
+  chatInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      sendMessage();
     }
+  });
 
-    // Remove loading indicator
-    function removeLoadingIndicator() {
-      const loading = document.getElementById('loading-indicator');
-      if (loading) {
-        loading.remove();
-      }
-    }
-
-    // Send message
-    async function sendMessage() {
-      const msg = chatInput.value.trim();
-      if (!msg) return;
-
-      // Disable input while processing
-      chatInput.disabled = true;
-      chatSend.disabled = true;
-
-      // Show user message
-      addMessage('You', msg, true);
-      chatInput.value = '';
-
-      // Show loading indicator
-      addLoadingIndicator();
-
-      try {
-        // Get response from API
-        const res = await fetch(API_URL, {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({message: msg})
-        });
-
-        if (!res.ok) {
-          throw new Error(`API error: ${res.status}`);
-        }
-
-        const data = await res.json();
-
-        // Remove loading and show response
-        removeLoadingIndicator();
-        addMessage('Assistant', data.response, false);
-      } catch (error) {
-        console.error('Error:', error);
-        removeLoadingIndicator();
-        addMessage('Assistant', 'Sorry, I encountered an error. Please try again.', false);
-      } finally {
-        // Re-enable input
-        chatInput.disabled = false;
-        chatSend.disabled = false;
-        chatInput.focus();
-      }
-    }
-
-    // Event listeners
-    chatSend.addEventListener('click', sendMessage);
-    chatInput.addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        sendMessage();
-      }
-    });
-
-    // Focus input on load
-    chatInput.focus();
-  </script>
+  chatInput.focus();
+</script>
 </body>
 </html>
