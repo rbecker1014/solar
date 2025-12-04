@@ -142,27 +142,6 @@ export async function mount(root, ctx){
           </div>
         </div>
       </section>
-
-      <hr class="border-t border-slate-200 dark:border-slate-700" />
-
-      <section class="space-y-3">
-        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">All Other</h2>
-        <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
-          <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
-          <div class="card"><div class="kpi" id="kpiImport">0 kWh</div><div class="kpi-label">Grid Import</div></div>
-          <div class="card"><div class="kpi" id="kpiExport">0 kWh</div><div class="kpi-label">Grid Export</div></div>
-        </div>
-        <div class="grid grid-cols-2 gap-3">
-          <div class="card"><div class="kpi" id="kpiSelfSufficiency">0%</div><div class="kpi-label">Self Sufficiency</div></div>
-          <div class="card"><div class="kpi" id="kpiAvgDailyUse">0 kWh</div><div class="kpi-label">Avg Daily Usage</div></div>
-          <div class="card"><div class="kpi" id="kpiAvgDailyProd">0 kWh</div><div class="kpi-label">Avg Daily Production</div></div>
-        </div>
-        <div class="card">
-          <div class="kpi" id="kpiTopProdValue">0 kWh</div>
-          <div class="kpi-label">Top Production Day</div>
-          <div class="text-xs text-slate-500" id="kpiTopProdDetail">No production data</div>
-        </div>
-      </section>
     </section>
   `;
 
@@ -313,16 +292,10 @@ async function loadKPIs(ctx){
     safeUpdate('#kpiPrevWeekTotal', `PWTD ${fmtKWh(metrics.weekToDate.previous)}`);
     safeUpdate('#kpiPrevMonthChange', formatDeltaPercent(metrics.monthToDate.delta, metrics.monthToDate.previous));
     safeUpdate('#kpiPrevMonthTotal', `PMTD ${fmtKWh(metrics.monthToDate.previous)}`);
-    safeUpdate('#kpiUsage', fmtKWh(metrics.totalUse));
     safeUpdate('#kpiYtdSolar', fmtKWh(metrics.yearToDate.value));
     safeUpdate('#kpiPrevYearChange', formatDeltaPercent(metrics.yearToDate.delta, metrics.yearToDate.previous));
     safeUpdate('#kpiPrevYearTotal', `PYTD ${fmtKWh(metrics.yearToDate.previous)}`);
     safeUpdate('#kpiYearToDateDetail', formatDeltaDetail(metrics.yearToDate, 'PYTD'));
-    safeUpdate('#kpiImport', fmtKWh(metrics.totalImp));
-    safeUpdate('#kpiExport', fmtKWh(metrics.totalExp));
-    safeUpdate('#kpiSelfSufficiency', fmtPct(metrics.selfSufficiency));
-    safeUpdate('#kpiAvgDailyUse', fmtKWh(metrics.avgDailyUse));
-    safeUpdate('#kpiAvgDailyProd', fmtKWh(metrics.avgDailyProd));
     safeUpdate('#kpiWeekToDateDetail', formatDeltaDetail(metrics.weekToDate, 'PWTD'));
     safeUpdate('#kpiWeekToDateRows', formatRowUsage(metrics.weekToDate));
     safeUpdate('#kpiMonthToDateDetail', formatDeltaDetail(metrics.monthToDate, 'PMTD'));
@@ -349,27 +322,6 @@ async function loadKPIs(ctx){
     safeUpdate('#kpiUsagePrevYearTotal', `PYTD ${fmtKWh(metrics.yearToDateUsage.previous)}`);
     safeUpdate('#kpiUsageYearToDateDetail', formatDeltaDetail(metrics.yearToDateUsage, 'PYTD'));
     safeUpdate('#kpiUsageYearRange', formatCoverageRange(metrics.yearToDateUsage));
-
-    // Handle top production day with null checks
-    const top = metrics.topProductionDay;
-    const topValueEl = $root.querySelector('#kpiTopProdValue');
-    const topDetailEl = $root.querySelector('#kpiTopProdDetail');
-
-    if (topValueEl && topDetailEl){
-      if (top?.date){
-        topValueEl.textContent = fmtKWh(top.solarKWh);
-        const bits = [fmtDate(top.date)].filter(Boolean);
-        bits.push(`Usage ${fmtKWh(top.homeKWh)}`);
-        bits.push(`Export ${fmtKWh(top.gridExport)}`);
-        topDetailEl.textContent = bits.join(' · ');
-      }else{
-        topValueEl.textContent = fmtKWh(0);
-        topDetailEl.textContent = 'No production data';
-      }
-    }else{
-      if (!topValueEl) console.warn('KPI element not found: #kpiTopProdValue');
-      if (!topDetailEl) console.warn('KPI element not found: #kpiTopProdDetail');
-    }
 
     console.log('KPIs loaded successfully');
 
