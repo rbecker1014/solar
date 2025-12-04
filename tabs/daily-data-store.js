@@ -343,9 +343,27 @@ export function selectKpiMetrics(state){
     }, 0);
   }
 
+  function sumUsageBetween(rows, startDate, endDate){
+    if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
+    const startTime = startDate.getTime();
+    const endTime = endDate.getTime();
+    if (!Number.isFinite(startTime) || !Number.isFinite(endTime)) return 0;
+    return rows.reduce((sum, row) => {
+      const rowTime = row.dateObj?.getTime();
+      if (!Number.isFinite(rowTime)) return sum;
+      return (rowTime >= startTime && rowTime <= endTime)
+        ? sum + row.homeKWh
+        : sum;
+    }, 0);
+  }
+
   let weekToDate = { value: 0, previous: 0, delta: 0, currentRowCount: 0, previousRowCount: 0 };
   let monthToDate = { value: 0, previous: 0, delta: 0 };
   let yearToDate = { value: 0, previous: 0, delta: 0 };
+
+  let weekToDateUsage = { value: 0, previous: 0, delta: 0, currentRowCount: 0, previousRowCount: 0 };
+  let monthToDateUsage = { value: 0, previous: 0, delta: 0 };
+  let yearToDateUsage = { value: 0, previous: 0, delta: 0 };
 
   const latestRow = solarSourceRows.reduce((latest, row) => {
     if (!row.dateObj) return latest;
@@ -453,6 +471,82 @@ export function selectKpiMetrics(state){
       start: new Date(startOfYear),
       end: new Date(currentDate),
     };
+
+    // Energy Usage Calculations (using homeKWh from combined data)
+    const usageRowsByDate = new Map(parsedAllRows.map((row) => [row.date, row]));
+
+    // Week to Date Usage
+    const weekUsageRowsRaw = parsedAllRows
+      .filter((row) => row.dateObj && row.dateObj >= startOfWeek && row.dateObj <= currentDate);
+    const sortedWeekUsageRows = [...weekUsageRowsRaw].sort((a, b) => a.dateObj - b.dateObj);
+    let rowsUsedForWeekUsageTotals = sortedWeekUsageRows;
+
+    const weekUsageRows = sortedWeekUsageRows.filter((row) => hasCompleteData(row));
+    if (weekUsageRows.length > 0){
+      rowsUsedForWeekUsageTotals = weekUsageRows;
+    }
+
+    const currentWeekUsageAggregation = rowsUsedForWeekUsageTotals.reduce((acc, row) => {
+      if (!row) return acc;
+      const value = toFiniteNumber(row.homeKWh);
+      if (Number.isFinite(value)){
+        acc.total += value;
+        acc.count += 1;
+      }
+      return acc;
+    }, { total: 0, count: 0 });
+
+    const prevWeekUsageAggregation = rowsUsedForWeekUsageTotals.reduce((acc, row) => {
+      if (!row?.dateObj) return acc;
+      const prevDate = new Date(row.dateObj);
+      prevDate.setDate(prevDate.getDate() - 7);
+      prevDate.setHours(0, 0, 0, 0);
+      const match = usageRowsByDate.get(toDateKey(prevDate));
+      const value = toFiniteNumber(match?.homeKWh);
+      if (Number.isFinite(value)){
+        acc.total += value;
+        acc.count += 1;
+      }
+      return acc;
+    }, { total: 0, count: 0 });
+
+    const currentWeekUsageTotal = currentWeekUsageAggregation.total;
+    const prevWeekUsageTotal = prevWeekUsageAggregation.total;
+
+    const usageCoverageStart = rowsUsedForWeekUsageTotals[0]?.dateObj || startOfWeek;
+    const usageCoverageEnd = rowsUsedForWeekUsageTotals[rowsUsedForWeekUsageTotals.length - 1]?.dateObj || currentDate;
+
+    weekToDateUsage = {
+      value: currentWeekUsageTotal,
+      previous: prevWeekUsageTotal,
+      delta: currentWeekUsageTotal - prevWeekUsageTotal,
+      start: new Date(usageCoverageStart),
+      end: new Date(usageCoverageEnd),
+      currentRowCount: currentWeekUsageAggregation.count,
+      previousRowCount: prevWeekUsageAggregation.count,
+    };
+
+    // Month to Date Usage
+    const currentMonthUsageTotal = sumUsageBetween(parsedAllRows, startOfMonth, currentDate);
+    const prevMonthUsageTotal = sumUsageBetween(parsedAllRows, prevMonthStart, prevMonthEnd);
+    monthToDateUsage = {
+      value: currentMonthUsageTotal,
+      previous: prevMonthUsageTotal,
+      delta: currentMonthUsageTotal - prevMonthUsageTotal,
+      start: new Date(startOfMonth),
+      end: new Date(currentDate),
+    };
+
+    // Year to Date Usage
+    const currentYearUsageTotal = sumUsageBetween(parsedAllRows, startOfYear, currentDate);
+    const prevYearUsageTotal = sumUsageBetween(parsedAllRows, prevYearStart, prevYearEnd);
+    yearToDateUsage = {
+      value: currentYearUsageTotal,
+      previous: prevYearUsageTotal,
+      delta: currentYearUsageTotal - prevYearUsageTotal,
+      start: new Date(startOfYear),
+      end: new Date(currentDate),
+    };
   }
 
   return {
@@ -467,6 +561,9 @@ export function selectKpiMetrics(state){
     weekToDate,
     monthToDate,
     yearToDate,
+    weekToDateUsage,
+    monthToDateUsage,
+    yearToDateUsage,
   };
 }
 
