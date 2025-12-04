@@ -80,6 +80,72 @@ export async function mount(root, ctx){
       <hr class="border-t border-slate-200 dark:border-slate-700" />
 
       <section class="space-y-3">
+        <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500 flex items-baseline gap-2">
+          <span>Energy Usage</span>
+        </h2>
+      </section>
+
+      <section class="space-y-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-baseline gap-2">
+          <span>Week To Date</span>
+          <span class="normal-case text-xs font-normal text-slate-400" id="kpiUsageWeekRange"></span>
+        </h3>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div class="card">
+            <div class="kpi" id="kpiUsageWeekToDate">0 kWh</div>
+            <div class="kpi-label">WTD Usage</div>
+            <div class="text-xs text-slate-500" id="kpiUsageWeekToDateDetail">vs PWTD</div>
+            <div class="text-xs text-slate-500" id="kpiUsageWeekToDateRows">Rows used: WTD 0 · PWTD 0</div>
+          </div>
+          <div class="card">
+            <div class="kpi" id="kpiUsagePrevWeekChange">0%</div>
+            <div class="kpi-label">PWTD Change</div>
+            <div class="text-xs text-slate-500" id="kpiUsagePrevWeekTotal">PWTD 0 kWh</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="space-y-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-baseline gap-2">
+          <span>Month To Date</span>
+          <span class="normal-case text-xs font-normal text-slate-400" id="kpiUsageMonthRange"></span>
+        </h3>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div class="card">
+            <div class="kpi" id="kpiUsageMonthToDate">0 kWh</div>
+            <div class="kpi-label">MTD Usage</div>
+            <div class="text-xs text-slate-500" id="kpiUsageMonthToDateDetail">vs PMTD</div>
+          </div>
+          <div class="card">
+            <div class="kpi" id="kpiUsagePrevMonthChange">0%</div>
+            <div class="kpi-label">PMTD Change</div>
+            <div class="text-xs text-slate-500" id="kpiUsagePrevMonthTotal">PMTD 0 kWh</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="space-y-3">
+        <h3 class="text-xs font-semibold uppercase tracking-wide text-slate-400 flex items-baseline gap-2">
+          <span>Year To Date</span>
+          <span class="normal-case text-xs font-normal text-slate-400" id="kpiUsageYearRange"></span>
+        </h3>
+        <div class="grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div class="card">
+            <div class="kpi" id="kpiUsageYtd">0 kWh</div>
+            <div class="kpi-label">YTD Usage</div>
+            <div class="text-xs text-slate-500" id="kpiUsageYearToDateDetail">vs PYTD</div>
+          </div>
+          <div class="card">
+            <div class="kpi" id="kpiUsagePrevYearChange">0%</div>
+            <div class="kpi-label">PYTD Change</div>
+            <div class="text-xs text-slate-500" id="kpiUsagePrevYearTotal">PYTD 0 kWh</div>
+          </div>
+        </div>
+      </section>
+
+      <hr class="border-t border-slate-200 dark:border-slate-700" />
+
+      <section class="space-y-3">
         <h2 class="text-sm font-semibold uppercase tracking-wide text-slate-500">All Other</h2>
         <div class="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-5">
           <div class="card"><div class="kpi" id="kpiUsage">0 kWh</div><div class="kpi-label">Total Usage</div></div>
@@ -263,6 +329,26 @@ async function loadKPIs(ctx){
     safeUpdate('#kpiWeekRange', formatCoverageRange(metrics.weekToDate));
     safeUpdate('#kpiMonthRange', formatCoverageRange(metrics.monthToDate));
     safeUpdate('#kpiYearRange', formatCoverageRange(metrics.yearToDate));
+
+    // Energy Usage KPIs
+    safeUpdate('#kpiUsageWeekToDate', fmtKWh(metrics.weekToDateUsage.value));
+    safeUpdate('#kpiUsagePrevWeekChange', formatDeltaPercent(metrics.weekToDateUsage.delta, metrics.weekToDateUsage.previous));
+    safeUpdate('#kpiUsagePrevWeekTotal', `PWTD ${fmtKWh(metrics.weekToDateUsage.previous)}`);
+    safeUpdate('#kpiUsageWeekToDateDetail', formatDeltaDetail(metrics.weekToDateUsage, 'PWTD'));
+    safeUpdate('#kpiUsageWeekToDateRows', formatRowUsage(metrics.weekToDateUsage));
+    safeUpdate('#kpiUsageWeekRange', formatCoverageRange(metrics.weekToDateUsage));
+
+    safeUpdate('#kpiUsageMonthToDate', fmtKWh(metrics.monthToDateUsage.value));
+    safeUpdate('#kpiUsagePrevMonthChange', formatDeltaPercent(metrics.monthToDateUsage.delta, metrics.monthToDateUsage.previous));
+    safeUpdate('#kpiUsagePrevMonthTotal', `PMTD ${fmtKWh(metrics.monthToDateUsage.previous)}`);
+    safeUpdate('#kpiUsageMonthToDateDetail', formatDeltaDetail(metrics.monthToDateUsage, 'PMTD'));
+    safeUpdate('#kpiUsageMonthRange', formatCoverageRange(metrics.monthToDateUsage));
+
+    safeUpdate('#kpiUsageYtd', fmtKWh(metrics.yearToDateUsage.value));
+    safeUpdate('#kpiUsagePrevYearChange', formatDeltaPercent(metrics.yearToDateUsage.delta, metrics.yearToDateUsage.previous));
+    safeUpdate('#kpiUsagePrevYearTotal', `PYTD ${fmtKWh(metrics.yearToDateUsage.previous)}`);
+    safeUpdate('#kpiUsageYearToDateDetail', formatDeltaDetail(metrics.yearToDateUsage, 'PYTD'));
+    safeUpdate('#kpiUsageYearRange', formatCoverageRange(metrics.yearToDateUsage));
 
     // Handle top production day with null checks
     const top = metrics.topProductionDay;
