@@ -23,19 +23,6 @@ export async function mount(root,ctx){
           <button id="refreshBtn" type="button" class="px-3 py-1.5 rounded bg-blue-600 text-white text-sm">Refresh</button>
         </div>
         <canvas id="chartMonthly" class="mt-3"></canvas>
-        <div class="overflow-x-auto mt-4">
-          <table class="min-w-full text-sm" id="monthlyTable">
-            <thead class="bg-gray-100 text-gray-700">
-              <tr>
-                <th class="text-left p-2">Month</th>
-                <th class="text-right p-2">Usage kWh</th>
-                <th class="text-right p-2">Solar kWh</th>
-                <th class="text-right p-2">Net kWh</th>
-              </tr>
-            </thead>
-            <tbody id="monthlyTableBody"></tbody>
-          </table>
-        </div>
       </div>
 
       <div class="card">
@@ -131,7 +118,6 @@ async function load(ctx){
 
 function draw(){
   drawMonthlyChart();
-  renderMonthlyTable();
   drawDailyChart();
 }
 
