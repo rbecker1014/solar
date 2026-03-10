@@ -8,6 +8,9 @@ export const CLOUD_SCOPES = [
   'https://www.googleapis.com/auth/bigquery',
 ];
 
+// FastAPI backend on Cloud Run (no trailing slash)
+export const API_BASE_URL = 'https://solar-api-656801194507.us-central1.run.app';
+
 export const CLOUD_STORAGE_BUCKET = 'solar-data-api-ingest';
 export const CLOUD_STORAGE_PREFIX = 'incoming';
 

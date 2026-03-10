@@ -1,23 +1,15 @@
 import { renderFeedback, injectStyles } from './UserFriendlyFeedback.js';
+import { API_BASE_URL } from './cloud-config.js';
 
 // Solar configuration - adjust for your location
 const SOLAR_CONFIG = {
   // Simple mode: fixed hours
   sunriseHour: 6,    // 6 AM
   sunsetHour: 18,    // 6 PM
-
-  // Advanced: Use actual location (implement later)
-  // latitude: 33.0,
-  // longitude: -117.0,
-  // useActualSunTimes: false
 };
 
 // Solar day calculation helpers
 function getSunriseSunset(date) {
-  // Simplified calculation - you can make this more accurate with lat/long later
-  // For now, assume sunrise at 6 AM and sunset at 6 PM (12 hours of daylight)
-  // TODO: Use actual sunrise/sunset API or library for user's location
-
   const sunrise = new Date(date);
   sunrise.setHours(SOLAR_CONFIG.sunriseHour, 0, 0, 0);
 
@@ -36,34 +28,28 @@ function getHoursOfDaylightElapsed(date) {
   const { sunrise, sunset } = getSunriseSunset(date);
 
   if (date < sunrise) return 0;
-  if (date > sunset) return 12; // Full day elapsed
+  if (date > sunset) return 12;
 
-  const elapsed = (date - sunrise) / (1000 * 60 * 60); // Hours
+  const elapsed = (date - sunrise) / (1000 * 60 * 60);
   return Math.max(0, Math.min(12, elapsed));
 }
 
 function getHoursOfDaylightRemaining(date) {
-  const totalDaylight = 12; // Hours (sunrise to sunset)
+  const totalDaylight = 12;
   const elapsed = getHoursOfDaylightElapsed(date);
   return Math.max(0, totalDaylight - elapsed);
 }
 
 function calculateProjectedProduction(currentProduction, hoursElapsed, hoursRemaining) {
-  if (hoursElapsed <= 0) return 0; // No data yet
-  if (hoursRemaining <= 0) return 0; // Day is over
+  if (hoursElapsed <= 0) return 0;
+  if (hoursRemaining <= 0) return 0;
 
-  // Calculate hourly rate based on what's been produced so far
   const hourlyRate = currentProduction / hoursElapsed;
-
-  // Project remaining production
   const projectedRemaining = hourlyRate * hoursRemaining;
 
   return projectedRemaining;
 }
 
-/**
- * Updates the time display every second
- */
 function updateEntryTime() {
   const timeInput = document.getElementById('entry-time');
   if (timeInput) {
@@ -78,22 +64,13 @@ function updateEntryTime() {
   }
 }
 
-/**
- * Validates and formats form data before submission
- * @param {Object} formData - Raw form data { date, itd, prod }
- * @param {boolean} useProjection - Whether to validate projected values instead of raw input
- * @param {HTMLElement} root - The root element to find projected values from
- * @returns {Object} - { errors: Array, formatted: Object }
- */
 function validateAndFormatData(formData, useProjection = false, root = null) {
   const errors = [];
   const formatted = { ...formData };
 
-  // Get the actual values that will be validated and submitted
   let itdToValidate = formData.itd;
   let prodToValidate = formData.prod;
 
-  // If using projection, get projected values from data attributes
   if (useProjection && root) {
     const prodInput = root.querySelector('#prod');
     const itdInput = root.querySelector('#itd');
@@ -107,16 +84,13 @@ function validateAndFormatData(formData, useProjection = false, root = null) {
     }
   }
 
-  // Validate Date
   if (!formData.date || formData.date.trim() === '') {
     errors.push({ field: 'date', message: 'Date is required' });
   } else {
-    // Check if date is valid format (YYYY-MM-DD)
     const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     if (!datePattern.test(formData.date)) {
       errors.push({ field: 'date', message: 'Date must be in YYYY-MM-DD format' });
     } else {
-      // Check if date is not in the future
       const inputDate = new Date(formData.date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
@@ -127,7 +101,6 @@ function validateAndFormatData(formData, useProjection = false, root = null) {
     }
   }
 
-  // Validate and format ITD (must be whole number) - use projected value if available
   if (!itdToValidate || itdToValidate === '') {
     errors.push({ field: 'itd', message: 'ITD Production is required' });
   } else {
@@ -139,14 +112,12 @@ function validateAndFormatData(formData, useProjection = false, root = null) {
     } else if (itdNum > 10000000) {
       errors.push({ field: 'itd', message: 'ITD value seems too large (max 10,000,000)' });
     } else if (!Number.isInteger(itdNum)) {
-      // Round to nearest integer
       formatted.itd = Math.round(itdNum);
     } else {
       formatted.itd = itdNum;
     }
   }
 
-  // Validate and format Production (max 3 decimals) - use projected value if available
   if (!prodToValidate || prodToValidate === '') {
     errors.push({ field: 'prod', message: 'Production is required' });
   } else {
@@ -158,7 +129,6 @@ function validateAndFormatData(formData, useProjection = false, root = null) {
     } else if (prodNum > 1000) {
       errors.push({ field: 'prod', message: 'Production value seems too large (max 1000 kWh/day)' });
     } else {
-      // Round to 3 decimal places
       formatted.prod = parseFloat(prodNum.toFixed(3));
     }
   }
@@ -166,17 +136,9 @@ function validateAndFormatData(formData, useProjection = false, root = null) {
   return { errors, formatted };
 }
 
-/**
- * Displays validation errors inline on the form
- * @param {HTMLElement} root - The root element
- * @param {Array} errors - Array of error objects { field, message }
- * @param {boolean} hasProjection - Whether projection is being used
- */
 function displayValidationErrors(root, errors, hasProjection = false) {
-  // Clear any existing error displays
   clearValidationErrors(root);
 
-  // If using projection, add a note at the top of the form
   if (hasProjection) {
     const form = root.querySelector('.card');
     const existingNote = form?.querySelector('.validation-projection-note');
@@ -187,7 +149,6 @@ function displayValidationErrors(root, errors, hasProjection = false) {
       projectionNote.style.cssText = 'background-color: #fff3cd; padding: 10px; margin-bottom: 10px; border-radius: 4px; color: #856404; font-size: 14px;';
       projectionNote.innerHTML = '📊 Validating projected end-of-day values';
 
-      // Insert after the h2 title
       const title = form.querySelector('h2');
       if (title && title.nextSibling) {
         title.parentNode.insertBefore(projectionNote, title.nextSibling);
@@ -196,16 +157,13 @@ function displayValidationErrors(root, errors, hasProjection = false) {
   }
 
   errors.forEach(error => {
-    // Find the input field
     const input = root.querySelector(`#${error.field}`);
 
     if (input) {
-      // Add error class to input
       input.classList.add('input-error');
       input.style.borderColor = '#dc3545';
       input.style.borderWidth = '2px';
 
-      // Create and insert error message
       const errorDiv = document.createElement('div');
       errorDiv.className = 'field-error-message';
       errorDiv.style.color = '#dc3545';
@@ -214,7 +172,6 @@ function displayValidationErrors(root, errors, hasProjection = false) {
       errorDiv.style.fontWeight = '500';
       errorDiv.textContent = error.message;
 
-      // Insert after the input's parent label
       const label = input.closest('label');
       if (label && label.parentNode) {
         label.parentNode.insertBefore(errorDiv, label.nextSibling);
@@ -223,38 +180,26 @@ function displayValidationErrors(root, errors, hasProjection = false) {
   });
 }
 
-/**
- * Clears all validation error displays
- * @param {HTMLElement} root - The root element
- */
 function clearValidationErrors(root) {
-  // Remove error styling from inputs
   root.querySelectorAll('.input-error').forEach(input => {
     input.classList.remove('input-error');
     input.style.borderColor = '';
     input.style.borderWidth = '';
   });
 
-  // Remove error messages
   root.querySelectorAll('.field-error-message').forEach(msg => {
     msg.remove();
   });
 
-  // Remove projection note
   root.querySelectorAll('.validation-projection-note').forEach(note => {
     note.remove();
   });
 }
 
-/**
- * Shows visual indicators that projected values are being used
- * @param {HTMLElement} root - The root element
- */
 function showProjectionBadge(root) {
   const prodInput = root.querySelector('#prod');
   const itdInput = root.querySelector('#itd');
 
-  // Add visual indicator that these are projected values
   [prodInput, itdInput].forEach(input => {
     if (input) {
       input.style.backgroundColor = '#fff3cd';
@@ -263,10 +208,6 @@ function showProjectionBadge(root) {
   });
 }
 
-/**
- * Clears visual indicators for projected values
- * @param {HTMLElement} root - The root element
- */
 function clearProjectionBadge(root) {
   const prodInput = root.querySelector('#prod');
   const itdInput = root.querySelector('#itd');
@@ -279,10 +220,6 @@ function clearProjectionBadge(root) {
   });
 }
 
-/**
- * Updates the production projection display
- * @param {HTMLElement} root - The root element
- */
 function updateProductionProjection(root) {
   const prodInput = root.querySelector('#prod');
   const itdInput = root.querySelector('#itd');
@@ -295,7 +232,6 @@ function updateProductionProjection(root) {
   const currentProduction = parseFloat(prodInput.value);
   const currentITD = parseFloat(itdInput.value);
 
-  // Only show projection if we have valid numbers
   if (isNaN(currentProduction) || isNaN(currentITD) || currentProduction <= 0) {
     projectionSection.style.display = 'none';
     if (projectionHelp) projectionHelp.style.display = 'none';
@@ -305,7 +241,6 @@ function updateProductionProjection(root) {
 
   const now = new Date();
 
-  // Check if we're in daylight hours
   if (!isDaylightHours(now)) {
     projectionSection.style.display = 'none';
     if (projectionHelp) projectionHelp.style.display = 'none';
@@ -316,7 +251,6 @@ function updateProductionProjection(root) {
   const hoursElapsed = getHoursOfDaylightElapsed(now);
   const hoursRemaining = getHoursOfDaylightRemaining(now);
 
-  // If day is over or just started, don't project
   if (hoursRemaining < 0.5 || hoursElapsed < 0.5) {
     projectionSection.style.display = 'none';
     if (projectionHelp) projectionHelp.style.display = 'none';
@@ -330,12 +264,10 @@ function updateProductionProjection(root) {
     hoursRemaining
   );
 
-  // Round to 3 decimals
   const roundedProjection = Math.round(projectedRemaining * 1000) / 1000;
   const projectedTotal = Math.round((currentProduction + projectedRemaining) * 1000) / 1000;
   const projectedITD = Math.round(currentITD + projectedRemaining);
 
-  // Show the projection
   projectionSection.style.display = 'block';
   if (projectionHelp) projectionHelp.style.display = 'block';
   projectionDetails.innerHTML = `
@@ -368,19 +300,17 @@ function updateProductionProjection(root) {
     </div>
   `;
 
-  // Store projection in BOTH inputs' data attributes for easier access
   prodInput.setAttribute('data-projected-total', projectedTotal);
   prodInput.setAttribute('data-projected-itd', projectedITD);
   itdInput.setAttribute('data-projected-itd', projectedITD);
   itdInput.setAttribute('data-has-projection', 'true');
 
-  // Show visual indicators
   showProjectionBadge(root);
 }
 
 export async function mount(root){
-  // Inject feedback component styles
   injectStyles();
+  const today = new Date().toISOString().slice(0, 10);
 
   root.innerHTML = `
     <section class="space-y-3">
@@ -394,7 +324,7 @@ export async function mount(root){
           <label class="block"><span class="text-sm text-gray-700">Time of Entry</span><input id="entry-time" type="text" class="input" readonly style="background-color: #f0f0f0; cursor: default;" placeholder="--:-- --"></label>
         </div>
         <div class="grid sm:grid-cols-3 gap-4">
-          <label class="block"><span class="text-sm text-gray-700">Date</span><input id="date" type="date" class="input" required></label>
+          <label class="block"><span class="text-sm text-gray-700">Date</span><input id="date" type="date" class="input" required value="${today}"></label>
           <label class="block"><span class="text-sm text-gray-700">ITD</span><input id="itd" type="number" step="1" min="0" class="input" required placeholder="126753"></label>
           <label class="block"><span class="text-sm text-gray-700">Prod</span><input id="prod" type="number" step="0.001" min="0" class="input" required placeholder="16.426"></label>
         </div>
@@ -404,7 +334,6 @@ export async function mount(root){
             📊 Mid-Day Projection
           </div>
           <div id="projection-details" style="font-size: 14px; color: #856404;">
-            <!-- Projection details will be inserted here -->
           </div>
         </div>
         <div style="font-size: 13px; color: #666; margin-top: 12px; display: none;" id="projection-help">
@@ -414,6 +343,34 @@ export async function mount(root){
         </div>
         <button id="btn" type="button" class="mt-4 px-4 py-2 rounded-xl bg-emerald-600 text-white hover:bg-emerald-700">Submit</button>
       </div>
+
+      <div class="card">
+        <h3 class="text-lg font-semibold mb-2">Inverter Photos</h3>
+        <p class="text-sm text-gray-500 mb-3">Snap a photo and the value will be read automatically.</p>
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">ITD Screen</label>
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-emerald-400 transition-colors">
+              <svg class="w-8 h-8 text-gray-400 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span class="text-xs text-gray-500" id="itd-capture-text">Tap to capture</span>
+              <input type="file" accept="image/*" capture="environment" class="hidden" id="itd-photo">
+            </label>
+            <img id="itd-preview" class="mt-2 rounded-lg w-full hidden" alt="ITD screen capture">
+            <div id="itd-ocr-status" class="text-xs mt-1 text-gray-400"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Daily Production</label>
+            <label class="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-xl p-4 cursor-pointer hover:border-emerald-400 transition-colors">
+              <svg class="w-8 h-8 text-gray-400 mb-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              <span class="text-xs text-gray-500" id="prod-capture-text">Tap to capture</span>
+              <input type="file" accept="image/*" capture="environment" class="hidden" id="prod-photo">
+            </label>
+            <img id="prod-preview" class="mt-2 rounded-lg w-full hidden" alt="Daily production capture">
+            <div id="prod-ocr-status" class="text-xs mt-1 text-gray-400"></div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <h3 class="text-lg font-semibold mb-2">Submission Feedback</h3>
         <div id="feedback-container"></div>
@@ -424,45 +381,109 @@ export async function mount(root){
   const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
   const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 
+  const $ = id => root.querySelector(`#${id}`);
+
+  // --- OCR via Claude Vision ---
+  async function readValueFromPhoto(dataUrl, field){
+    const res = await fetch(`${API_BASE_URL}/ocr`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl, field }),
+    });
+    if (!res.ok) throw new Error(`OCR request failed: ${res.status}`);
+    return res.json();
+  }
+
+  function resizeImage(file, maxDim = 1024){
+    return new Promise((resolve) => {
+      const img = new Image();
+      img.onload = () => {
+        const scale = Math.min(1, maxDim / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', 0.85));
+      };
+      img.src = URL.createObjectURL(file);
+    });
+  }
+
+  // --- Photo capture + OCR ---
+  function setupCapture(inputId, previewId, labelTextId, statusId, field, targetInputId){
+    const input = $(inputId);
+    const preview = $(previewId);
+    const labelText = $(labelTextId);
+    const statusEl = $(statusId);
+
+    input.addEventListener('change', async () => {
+      const file = input.files[0];
+      if (!file) return;
+
+      const dataUrl = await resizeImage(file);
+      preview.src = dataUrl;
+      preview.classList.remove('hidden');
+      labelText.textContent = 'Captured';
+
+      statusEl.textContent = 'Reading value…';
+      statusEl.className = 'text-xs mt-1 text-sky-600';
+      try {
+        const result = await readValueFromPhoto(dataUrl, field);
+        if (result.value != null){
+          $(targetInputId).value = result.value;
+          statusEl.textContent = `Read: ${result.value}`;
+          statusEl.className = 'text-xs mt-1 text-emerald-600 font-medium';
+          // Trigger projection update after OCR fills a value
+          updateProductionProjection(root);
+        } else {
+          statusEl.textContent = `Could not read value (raw: "${result.raw}")`;
+          statusEl.className = 'text-xs mt-1 text-amber-600';
+        }
+      } catch (e) {
+        statusEl.textContent = 'OCR failed — enter manually';
+        statusEl.className = 'text-xs mt-1 text-red-500';
+      }
+    });
+  }
+
+  setupCapture('itd-photo', 'itd-preview', 'itd-capture-text', 'itd-ocr-status', 'itd', 'itd');
+  setupCapture('prod-photo', 'prod-preview', 'prod-capture-text', 'prod-ocr-status', 'prod', 'prod');
+
+  // --- Latest entry display ---
   async function refreshLatest(){
     try {
       const res = await fetch(`${ENDPOINT}?token=${encodeURIComponent(TOKEN)}`);
       const j = await res.json();
-      const latestDateEl = root.querySelector('#latest-date');
-      const latestItdEl  = root.querySelector('#latest-itd');
-      const latestProdEl = root.querySelector('#latest-prod');
       if (j?.ok && j?.last) {
-        latestDateEl.textContent = `Most recent date: ${j.last.date ?? 'none'}`;
-        latestItdEl.textContent  = `ITD Production: ${j.last.itd ?? 'none'}`;
-        latestProdEl.textContent = `Production: ${j.last.prod ?? 'none'}`;
+        $('latest-date').textContent = `Most recent date: ${j.last.date ?? 'none'}`;
+        $('latest-itd').textContent  = `ITD Production: ${j.last.itd ?? 'none'}`;
+        $('latest-prod').textContent = `Production: ${j.last.prod ?? 'none'}`;
       } else {
-        latestDateEl.textContent = 'Most recent date: none';
-        latestItdEl.textContent  = 'ITD Production: none';
-        latestProdEl.textContent = 'Production: none';
+        $('latest-date').textContent = 'Most recent date: none';
+        $('latest-itd').textContent  = 'ITD Production: none';
+        $('latest-prod').textContent = 'Production: none';
       }
     } catch (e) {
-      root.querySelector('#latest-date').textContent = 'Error fetching latest';
-      root.querySelector('#latest-itd').textContent  = '';
-      root.querySelector('#latest-prod').textContent = '';
+      $('latest-date').textContent = 'Error fetching latest';
+      $('latest-itd').textContent  = '';
+      $('latest-prod').textContent = '';
     }
   }
 
+  // --- Submit ---
   root.querySelector('#btn').addEventListener('click', async () => {
     const prodInput = root.querySelector('#prod');
     const itdInput = root.querySelector('#itd');
     const dateInput = root.querySelector('#date');
 
-    // Check if we have projected values
     const hasProjection = prodInput.hasAttribute('data-projected-total');
 
-    // Get RAW form data (what user entered)
     const rawFormData = {
       date: dateInput.value,
       itd: itdInput.value,
       prod: prodInput.value
     };
 
-    // Get the values that will actually be submitted
     const submissionData = {
       date: dateInput.value,
       itd: hasProjection
@@ -475,35 +496,13 @@ export async function mount(root){
 
     const feedbackContainer = root.querySelector('#feedback-container');
 
-    // Clear any previous validation errors
     clearValidationErrors(root);
 
-    // Debug logging
-    console.log('=== VALIDATION & SUBMISSION DEBUG ===');
-    console.log('Raw input values:', rawFormData);
-    console.log('Has projection:', hasProjection);
-
-    if (hasProjection) {
-      console.log('Projected values:', {
-        itd: prodInput.getAttribute('data-projected-itd'),
-        prod: prodInput.getAttribute('data-projected-total')
-      });
-    }
-
-    console.log('Validating with projection:', hasProjection);
-
-    // Validate the VALUES THAT WILL BE SUBMITTED (projected if available)
     const { errors, formatted } = validateAndFormatData(submissionData, hasProjection, root);
 
-    console.log('Validation errors:', errors);
-    console.log('Final submission data:', formatted);
-    console.log('=====================================');
-
     if (errors.length > 0) {
-      // Show inline validation errors
       displayValidationErrors(root, errors, hasProjection);
 
-      // Show validation errors using the feedback component
       renderFeedback(feedbackContainer, JSON.stringify({
         ok: false,
         errors: errors.map(err => ({
@@ -518,12 +517,10 @@ export async function mount(root){
       return;
     }
 
-    root.querySelector('#status').textContent = "Submitting…";
+    $('status').textContent = "Submitting…";
 
-    // Clear previous feedback
     feedbackContainer.innerHTML = '';
 
-    // Use formatted data for submission
     const body = new URLSearchParams({
       token: TOKEN,
       date: formatted.date,
@@ -537,8 +534,6 @@ export async function mount(root){
       prod: formatted.prod
     };
 
-    console.log('Submitting formatted data:', submittedData);
-
     try {
       const res  = await fetch(ENDPOINT, {
         method: 'POST',
@@ -547,21 +542,16 @@ export async function mount(root){
       });
       const text = await res.text();
 
-      console.log('API Response:', text);
-
-      // Render user-friendly feedback
       renderFeedback(feedbackContainer, text, submittedData);
 
       root.querySelector('#status').textContent = "Submitted OK";
 
-      // Clear form on success
       const responseObj = typeof text === 'string' ? JSON.parse(text) : text;
       if (responseObj.ok === true) {
         root.querySelector('#date').value = '';
         root.querySelector('#itd').value = '';
         root.querySelector('#prod').value = '';
 
-        // Clear projection data attributes
         const prodInputClear = root.querySelector('#prod');
         const itdInputClear = root.querySelector('#itd');
         if (prodInputClear) {
@@ -571,7 +561,6 @@ export async function mount(root){
           itdInputClear.removeAttribute('data-projected-itd');
         }
 
-        // Hide projection section and clear visual indicators
         const projectionSection = root.querySelector('#projection-section');
         const projectionHelp = root.querySelector('#projection-help');
         if (projectionSection) projectionSection.style.display = 'none';
@@ -583,9 +572,6 @@ export async function mount(root){
     } catch (e) {
       root.querySelector('#status').textContent = "Submit failed";
 
-      console.error('Submit error:', e);
-
-      // Render error feedback
       renderFeedback(feedbackContainer, JSON.stringify({
         ok: false,
         error: `Network error: ${e.message}`
@@ -605,12 +591,10 @@ export async function mount(root){
   [dateInput, itdInput, prodInput].forEach(input => {
     if (input) {
       input.addEventListener('input', () => {
-        // Clear error styling for this field
         input.classList.remove('input-error');
         input.style.borderColor = '';
         input.style.borderWidth = '';
 
-        // Remove error message for this field
         const label = input.closest('label');
         if (label && label.nextSibling && label.nextSibling.classList?.contains('field-error-message')) {
           label.nextSibling.remove();
@@ -628,10 +612,8 @@ export async function mount(root){
     itdInput.addEventListener('input', () => updateProductionProjection(root));
   }
 
-  // Update projection every minute (in case time crosses threshold)
   setInterval(() => updateProductionProjection(root), 60000);
 
-  // Initial projection update
   updateProductionProjection(root);
 
   refreshLatest();

@@ -1,5 +1,5 @@
 // app.core.js
-// Shared state, auth, Sheets, router, and lazy tab loader
+// Shared state, auth, router, and lazy tab loader
 import './pwa-install.js';
 import { getDefaultDateRange } from './tabs/date-range.js';
 import { ensureDailyDataLoaded } from './tabs/daily-data-store.js';
@@ -109,14 +109,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   showLoadingOverlay('Syncing with the energy grid…');
 
-  let loadSucceeded = false;
+  // Show UI immediately with cached data, refresh in background
   try {
     await loadData();
-    loadSucceeded = true;
   } catch (e) {
-    console.error(e);
-    showLoadingOverlay('We hit a snag getting fresh data — showing the latest saved view.');
+    console.error('Initial load error (will use cache if available):', e);
   }
   showTab('kpi');
-  hideLoadingOverlay(loadSucceeded ? 120 : 3200);
+  hideLoadingOverlay(120);
 });

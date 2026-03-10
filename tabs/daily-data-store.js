@@ -5,6 +5,25 @@ import { getDefaultDateRange, getNormalizedDateRange } from './date-range.js';
 const ENDPOINT = "https://script.google.com/macros/s/AKfycbwRo6WY9zanLB2B47Wl4oJBIoRNBCrO1qcPHJ6FKvi0FdTJQd4TeekpHsfyMva2TUCf/exec";
 const TOKEN    = "Rick_c9b8f4f2a0d34d0c9e2b6a7c5f1e4a3d";
 const DAY_MS   = 86_400_000;
+const LS_KEY   = 'solar_cached_daily';
+const LS_FULL_KEY = 'solar_cached_daily_full';
+const LS_SOLAR_KEY = 'solar_cached_solar';
+
+function saveToCache(storageKey, range, rows){
+  try {
+    localStorage.setItem(storageKey, JSON.stringify({ range, rows, ts: Date.now() }));
+  } catch (_) { /* quota exceeded — ignore */ }
+}
+
+function loadFromCache(storageKey, rangeKey){
+  try {
+    const raw = localStorage.getItem(storageKey);
+    if (!raw) return null;
+    const cached = JSON.parse(raw);
+    if (cached && buildRangeKey(cached.range) === rangeKey) return cached.rows;
+  } catch (_) { /* corrupt — ignore */ }
+  return null;
+}
 
 function toDateKey(date){
   if (!(date instanceof Date)) return '';
@@ -175,14 +194,24 @@ export async function ensureDailyDataLoaded(state){
   store.status = 'loading';
   store.error = null;
 
+  // Serve cached data instantly while fetching fresh
+  const cached = loadFromCache(LS_KEY, key);
+  if (cached && cached.length > 0){
+    store.rows = cached;
+    store.status = 'ready';
+    store.lastFetched = 'cached';
+  }
+
   const promise = fetchCombinedDaily(range)
     .then((rows) => {
       store.rows = rows;
       store.status = 'ready';
       store.lastFetched = new Date().toISOString();
+      saveToCache(LS_KEY, range, rows);
       return rows;
     })
     .catch((err) => {
+      if (store.lastFetched === 'cached') return store.rows;
       store.status = 'error';
       store.error = err;
       throw err;
@@ -192,7 +221,7 @@ export async function ensureDailyDataLoaded(state){
     });
 
   store.promise = promise;
-  return promise;
+  return cached && cached.length > 0 ? store.rows : promise;
 }
 
 export async function ensureFullDailyDataLoaded(state){
@@ -215,14 +244,23 @@ export async function ensureFullDailyDataLoaded(state){
   store.status = 'loading';
   store.error = null;
 
+  const cached = loadFromCache(LS_FULL_KEY, key);
+  if (cached && cached.length > 0){
+    store.rows = cached;
+    store.status = 'ready';
+    store.lastFetched = 'cached';
+  }
+
   const promise = fetchCombinedDaily(range)
     .then((rows) => {
       store.rows = rows;
       store.status = 'ready';
       store.lastFetched = new Date().toISOString();
+      saveToCache(LS_FULL_KEY, range, rows);
       return rows;
     })
     .catch((err) => {
+      if (store.lastFetched === 'cached') return store.rows;
       store.status = 'error';
       store.error = err;
       throw err;
@@ -232,7 +270,7 @@ export async function ensureFullDailyDataLoaded(state){
     });
 
   store.promise = promise;
-  return promise;
+  return cached && cached.length > 0 ? store.rows : promise;
 }
 
 export async function ensureSolarProductionLoaded(state){
@@ -255,14 +293,23 @@ export async function ensureSolarProductionLoaded(state){
   store.status = 'loading';
   store.error = null;
 
+  const cached = loadFromCache(LS_SOLAR_KEY, key);
+  if (cached && cached.length > 0){
+    store.rows = cached;
+    store.status = 'ready';
+    store.lastFetched = 'cached';
+  }
+
   const promise = fetchSolarProduction(range)
     .then((rows) => {
       store.rows = rows;
       store.status = 'ready';
       store.lastFetched = new Date().toISOString();
+      saveToCache(LS_SOLAR_KEY, range, rows);
       return rows;
     })
     .catch((err) => {
+      if (store.lastFetched === 'cached') return store.rows;
       store.status = 'error';
       store.error = err;
       throw err;
@@ -272,7 +319,7 @@ export async function ensureSolarProductionLoaded(state){
     });
 
   store.promise = promise;
-  return promise;
+  return cached && cached.length > 0 ? store.rows : promise;
 }
 
 export function selectKpiMetrics(state){
